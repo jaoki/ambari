@@ -246,7 +246,7 @@ public class NagiosPropertyProviderTest {
     StringWriter writer = new StringWriter();
     IOUtils.copy(streamProvider2.readFrom(""), writer, "UTF-8");
 
-    System.out.println("TestStreamProvider: " + writer.toString());
+//#    System.out.println("TestStreamProvider: " + writer.toString());
 
     NagiosPropertyProvider npp = new NagiosPropertyProvider(Resource.Type.Service,
         streamProvider,
