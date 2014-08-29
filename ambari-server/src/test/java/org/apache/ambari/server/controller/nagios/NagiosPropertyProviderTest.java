@@ -264,7 +264,7 @@ public class NagiosPropertyProviderTest {
     Assert.assertTrue(values.containsKey("alerts/summary"));
     Assert.assertTrue(values.get("alerts").containsKey("detail"));
     Assert.assertTrue(List.class.isInstance(values.get("alerts").get("detail")));
-
+    
     List<?> list = (List<?>) values.get("alerts").get("detail");
     Assert.assertEquals(Integer.valueOf(3), Integer.valueOf(list.size()));
     for (Object o : list) {
