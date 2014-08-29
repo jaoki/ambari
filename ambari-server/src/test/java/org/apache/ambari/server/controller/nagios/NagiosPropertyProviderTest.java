@@ -45,8 +45,6 @@ import org.apache.ambari.server.state.Clusters;
 import org.apache.ambari.server.state.Service;
 import org.apache.ambari.server.state.ServiceComponent;
 import org.apache.ambari.server.state.ServiceComponentHost;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -242,13 +240,7 @@ public class NagiosPropertyProviderTest {
     module.properties.remove(Configuration.NAGIOS_IGNORE_FOR_SERVICES_KEY); // make sure NAGIOS_IGNORE_FOR_SERVICES_KEY is not set, which could be set by testNagiosServiceAlertsAddIgnore
 
     TestStreamProvider streamProvider = new TestStreamProvider("nagios_alerts.txt");
-    TestStreamProvider streamProvider2 = new TestStreamProvider("nagios_alerts.txt");
     
-    StringWriter writer = new StringWriter();
-    IOUtils.copy(streamProvider2.readFrom(""), writer, "UTF-8");
-
-//#    System.out.println("TestStreamProvider: " + writer.toString());
-
     NagiosPropertyProvider npp = new NagiosPropertyProvider(Resource.Type.Service,
         streamProvider,
         "ServiceInfo/cluster_name",
