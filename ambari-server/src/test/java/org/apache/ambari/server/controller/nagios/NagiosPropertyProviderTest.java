@@ -239,6 +239,7 @@ public class NagiosPropertyProviderTest {
   
   @Test
   public void testNagiosServiceAlerts() throws Exception {
+    module.properties.remove(Configuration.NAGIOS_IGNORE_FOR_SERVICES_KEY); // make sure NAGIOS_IGNORE_FOR_SERVICES_KEY is not set, which could be set by testNagiosServiceAlertsAddIgnore
 
     TestStreamProvider streamProvider = new TestStreamProvider("nagios_alerts.txt");
     TestStreamProvider streamProvider2 = new TestStreamProvider("nagios_alerts.txt");
