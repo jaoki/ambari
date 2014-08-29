@@ -238,7 +238,7 @@ public class NagiosPropertyProviderTest {
     module.properties.remove(Configuration.NAGIOS_IGNORE_FOR_SERVICES_KEY); // make sure NAGIOS_IGNORE_FOR_SERVICES_KEY is not set, which could be set by testNagiosServiceAlertsAddIgnore
 
     TestStreamProvider streamProvider = new TestStreamProvider("nagios_alerts.txt");
-    
+
     NagiosPropertyProvider npp = new NagiosPropertyProvider(Resource.Type.Service,
         streamProvider,
         "ServiceInfo/cluster_name",
