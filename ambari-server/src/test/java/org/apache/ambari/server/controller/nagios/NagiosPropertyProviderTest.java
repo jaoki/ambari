@@ -23,6 +23,7 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 
 import java.io.File;
+import java.io.StringWriter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,7 @@ import org.apache.ambari.server.state.Service;
 import org.apache.ambari.server.state.ServiceComponent;
 import org.apache.ambari.server.state.ServiceComponentHost;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -239,8 +241,12 @@ public class NagiosPropertyProviderTest {
   public void testNagiosServiceAlerts() throws Exception {
 
     TestStreamProvider streamProvider = new TestStreamProvider("nagios_alerts.txt");
+    TestStreamProvider streamProvider2 = new TestStreamProvider("nagios_alerts.txt");
     
-    System.out.println("FileUtils.readFileToString" + FileUtils.readFileToString(new File("nagios_alerts.txt")));
+    StringWriter writer = new StringWriter();
+    IOUtils.copy(streamProvider2.readFrom(""), writer, "UTF-8");
+
+    System.out.println("TestStreamProvider: " + writer.toString());
 
     NagiosPropertyProvider npp = new NagiosPropertyProvider(Resource.Type.Service,
         streamProvider,
@@ -267,7 +273,7 @@ public class NagiosPropertyProviderTest {
     Assert.assertTrue(values.get("alerts").containsKey("detail"));
     Assert.assertTrue(List.class.isInstance(values.get("alerts").get("detail")));
 
-    System.out.println("values.get(alerts)" + values.get("alerts"));
+    System.out.println("values.get(alerts): " + values.get("alerts"));
     
     List<?> list = (List<?>) values.get("alerts").get("detail");
     Assert.assertEquals(Integer.valueOf(3), Integer.valueOf(list.size()));
