@@ -22,6 +22,7 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ import org.apache.ambari.server.state.Clusters;
 import org.apache.ambari.server.state.Service;
 import org.apache.ambari.server.state.ServiceComponent;
 import org.apache.ambari.server.state.ServiceComponentHost;
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -237,6 +239,8 @@ public class NagiosPropertyProviderTest {
   public void testNagiosServiceAlerts() throws Exception {
 
     TestStreamProvider streamProvider = new TestStreamProvider("nagios_alerts.txt");
+    
+    System.out.println("FileUtils.readFileToString" + FileUtils.readFileToString(new File("nagios_alerts.txt")));
 
     NagiosPropertyProvider npp = new NagiosPropertyProvider(Resource.Type.Service,
         streamProvider,
