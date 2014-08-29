@@ -411,6 +411,7 @@ public class NagiosPropertyProviderTest {
         "ServiceInfo/cluster_name",
         "ServiceInfo/service_name");
     npp.forceReset();
+    NagiosPropertyProvider.init(injector);
     
     Resource resource = new ResourceImpl(Resource.Type.Service);
     resource.setProperty("ServiceInfo/cluster_name", "c1");
@@ -483,6 +484,7 @@ public class NagiosPropertyProviderTest {
         "ServiceInfo/cluster_name",
         "ServiceInfo/service_name");
     npp.forceReset();
+    NagiosPropertyProvider.init(inj);
     
     Resource resource = new ResourceImpl(Resource.Type.Service);
     resource.setProperty("ServiceInfo/cluster_name", "c1");
