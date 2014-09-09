@@ -255,7 +255,8 @@ downloadPatch () {
 ###############################################################################
 verifyPatch () {
   # Before building, check to make sure that the patch is valid
-  $bindir/smart-apply-patch.sh $PATCH_DIR/patch dryrun
+  # $bindir/smart-apply-patch.sh $PATCH_DIR/patch dryrun
+  $GIT apply --check $PATCH_DIR/patch
   if [[ $? != 0 ]] ; then
     echo "PATCH APPLICATION FAILED"
     JIRA_COMMENT="$JIRA_COMMENT
