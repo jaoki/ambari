@@ -37,7 +37,7 @@ BUILD_NATIVE=true
 PS=${PS:-ps}
 AWK=${AWK:-awk}
 WGET=${WGET:-wget}
-SVN=${SVN:-svn}
+GIT=${GIT:-git}
 GREP=${GREP:-grep}
 PATCH=${PATCH:-patch}
 DIFF=${DIFF:-diff}
@@ -60,7 +60,7 @@ printUsage() {
   echo "--mvn-cmd=<cmd>        The 'mvn' command to use (default \$MAVEN_HOME/bin/mvn, or 'mvn')"
   echo "--ps-cmd=<cmd>         The 'ps' command to use (default 'ps')"
   echo "--awk-cmd=<cmd>        The 'awk' command to use (default 'awk')"
-  echo "--svn-cmd=<cmd>        The 'svn' command to use (default 'svn')"
+  echo "--git-cmd=<cmd>        The 'git' command to use (default 'git')"
   echo "--grep-cmd=<cmd>       The 'grep' command to use (default 'grep')"
   echo "--patch-cmd=<cmd>      The 'patch' command to use (default 'patch')"
   echo "--diff-cmd=<cmd>       The 'diff' command to use (default 'diff')"
@@ -108,8 +108,8 @@ parseArgs() {
     --wget-cmd=*)
       WGET=${i#*=}
       ;;
-    --svn-cmd=*)
-      SVN=${i#*=}
+    --git-cmd=*)
+      GIT=${i#*=}
       ;;
     --grep-cmd=*)
       GREP=${i#*=}
@@ -198,7 +198,8 @@ checkout () {
   echo ""
   ### When run by a developer, if the workspace contains modifications, do not continue
   ### unless the --dirty-workspace option was set
-  status=`$SVN stat --ignore-externals | sed -e '/^X[ ]*/D'`
+  # status=`$GIT status -s | sed -e '/^X[ ]*/D'`
+  status=`$GIT status -s `
   if [[ $JENKINS == "false" ]] ; then
     if [[ "$status" != "" && -z $DIRTY_WORKSPACE ]] ; then
       echo "ERROR: can't run in a workspace that contains the following modifications"
@@ -208,9 +209,9 @@ checkout () {
     echo
   else   
     cd $BASEDIR
-    $SVN revert -R .
-    rm -rf `$SVN status --no-ignore`
-    $SVN update
+    $GIT checkout -- .
+    rm -rf `$GIT status --no-ignore`
+    $GIT update
   fi
   return $?
 }
