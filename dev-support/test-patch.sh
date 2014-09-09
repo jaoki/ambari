@@ -210,7 +210,7 @@ checkout () {
   else   
     cd $BASEDIR
     $GIT checkout -- .
-    $GIT clean -x 
+    $GIT clean -x -f -d
     $GIT pull
   fi
   return $?
