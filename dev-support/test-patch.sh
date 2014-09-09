@@ -403,7 +403,8 @@ applyPatch () {
   echo ""
   echo ""
   export PATCH
-  $bindir/smart-apply-patch.sh $PATCH_DIR/patch
+  # $bindir/smart-apply-patch.sh $PATCH_DIR/patch
+  $GIT apply $PATCH_DIR/patch
   if [[ $? != 0 ]] ; then
     echo "PATCH APPLICATION FAILED"
     JIRA_COMMENT="$JIRA_COMMENT
@@ -1051,9 +1052,9 @@ checkJavadocWarnings
 #checkStyle
 #(( RESULT = RESULT + $? ))
 buildAndInstall
-checkEclipseGeneration
+# checkEclipseGeneration
 (( RESULT = RESULT + $? ))
-checkFindbugsWarnings
+# checkFindbugsWarnings
 (( RESULT = RESULT + $? ))
 checkReleaseAuditWarnings
 (( RESULT = RESULT + $? ))
