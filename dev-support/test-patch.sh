@@ -210,8 +210,8 @@ checkout () {
   else   
     cd $BASEDIR
     $GIT checkout -- .
-    rm -rf `$GIT status --no-ignore`
-    $GIT update
+    $GIT clean -x 
+    $GIT pull
   fi
   return $?
 }
