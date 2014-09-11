@@ -19,8 +19,9 @@ fi
 BASEDIR=$(pwd)
 TEMPDIR=${BASEDIR}/tmp
 
-JIRAAVAILPATCHQUERY="https://issues.apache.org/jira/sr/jira.issueviews:searchrequest-xml/temp/SearchRequest.xml?jqlQuery=project+in+%28OOZIE%29+AND+status+%3D+%22Patch+Available%22+ORDER+BY+updated+DESC&tempMax=1000"
-TESTPATCHJOBURL="https://builds.apache.org/job/oozie-trunk-precommit-build"
+JIRAAVAILPATCHQUERY="https://issues.apache.org/jira/sr/jira.issueviews:searchrequest-xml/temp/SearchRequest.xml?jqlQuery=project+in+%28AMBARI%29+AND+status+%3D+%22Patch+Available%22+ORDER+BY+updated+DESC&tempMax=1000"
+# TESTPATCHJOBURL="https://builds.apache.org/job/Ambari-trunk-test-patch"
+TESTPATCHJOBURL="http://10.103.219.57:8080/job/Ambari-trunk-test-patch"
 TOKEN=""
 SUBMIT="false"
 DELETEHISTORYFILE="false"
@@ -78,8 +79,8 @@ fi
 xpath -q -e "//item/key/text() | //item/attachments/attachment[not(../attachment/@id > @id)]/@id" ${TEMPDIR}/patch-availables.xml > ${TEMPDIR}/patch-attachments.element
 
 ### Replace newlines with nothing, then replace id=" with =, then replace " with newline
-### to yield lines with pairs (issueNumber,largestAttachmentId). Example: OOZIE-123,456984
-cat ${TEMPDIR}/patch-attachments.element | awk '{ if ( $1 ~ /^OOZIE\-/) {JIRA=$1 }; if ($1 ~ /id=/) { print JIRA","$1} }' | sed 's/id\="//' | sed 's/"//' > ${TEMPDIR}/patch-availables.pair
+### to yield lines with pairs (issueNumber,largestAttachmentId). Example: AMBARI-123,456984
+cat ${TEMPDIR}/patch-attachments.element | awk '{ if ( $1 ~ /^AMBARI\-/) {JIRA=$1 }; if ($1 ~ /id=/) { print JIRA","$1} }' | sed 's/id\="//' | sed 's/"//' > ${TEMPDIR}/patch-availables.pair
 
 ### Iterate through issue list and find the (issueNumber,largestAttachmentId) pairs that have
 ### not been tested (ie don't already exist in the patch_tested.txt file
