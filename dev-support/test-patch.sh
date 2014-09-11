@@ -28,7 +28,7 @@ else
   MVN=$MAVEN_HOME/bin/mvn
 fi
 
-PROJECT_NAME=Hadoop
+PROJECT_NAME=Ambari
 JENKINS=false
 PATCH_DIR=/tmp
 SUPPORT_DIR=/tmp
