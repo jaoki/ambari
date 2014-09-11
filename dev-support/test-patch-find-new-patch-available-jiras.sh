@@ -30,7 +30,7 @@ RUNTESTSFILE=${BASEDIR}/TESTED_PATCHES.txt
 
 printUsage() {
   echo "Usage: $0 <OPTIONS>"
-  echo "          --submit --token=<OOZIE PRECOMMIT JOB TOKEN>"
+  echo "          --submit --token=<AMBARI PRECOMMIT JOB TOKEN>"
   echo "          [--delete-history-file]"
   echo "          [--script-debug]"
   echo
