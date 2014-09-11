@@ -34,6 +34,9 @@ module.exports = Em.Application.create({
   }),
   isAdmin: false,
   isOperator: false,
+  isManager: function() {
+    return this.get('isAdmin') || this.get('isOperator');
+  }.property('isAdmin','isOperator'),
   /**
    * return url prefix with number value of version of HDP stack
    */
@@ -88,7 +91,7 @@ module.exports = Em.Application.create({
   isHaEnabled: function () {
     if (!this.get('isHadoop2Stack')) return false;
     var isHDFSInstalled = App.Service.find().findProperty('serviceName','HDFS');
-    return isHDFSInstalled && !this.HostComponent.find().someProperty('componentName', 'SECONDARY_NAMENODE');
+    return !!isHDFSInstalled && !this.HostComponent.find().someProperty('componentName', 'SECONDARY_NAMENODE');
   }.property('router.clusterController.isLoaded', 'isHadoop2Stack'),
 
   /**
