@@ -294,8 +294,8 @@ prebuildWithoutPatch () {
     cd -
   fi
   echo "Compiling $(pwd)"
-  echo "$MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess -Ptest-patch > $PATCH_DIR/trunkJavacWarnings.txt 2>&1"
-  $MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess -Ptest-patch > $PATCH_DIR/trunkJavacWarnings.txt 2>&1
+  echo "$MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess  > $PATCH_DIR/trunkJavacWarnings.txt 2>&1"
+  $MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess  > $PATCH_DIR/trunkJavacWarnings.txt 2>&1
   if [[ $? != 0 ]] ; then
     echo "Trunk compilation is broken?"
     JIRA_COMMENT="$JIRA_COMMENT
@@ -478,8 +478,8 @@ checkJavacWarnings () {
   echo "======================================================================"
   echo ""
   echo ""
-  echo "$MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess $NATIVE_PROFILE -Ptest-patch > $PATCH_DIR/patchJavacWarnings.txt 2>&1"
-  $MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess $NATIVE_PROFILE -Ptest-patch > $PATCH_DIR/patchJavacWarnings.txt 2>&1
+  echo "$MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess $NATIVE_PROFILE  > $PATCH_DIR/patchJavacWarnings.txt 2>&1"
+  $MVN clean test -DskipTests -D${PROJECT_NAME}PatchProcess $NATIVE_PROFILE  > $PATCH_DIR/patchJavacWarnings.txt 2>&1
   if [[ $? != 0 ]] ; then
     JIRA_COMMENT="$JIRA_COMMENT
 
