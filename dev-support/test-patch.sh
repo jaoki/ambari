@@ -1062,7 +1062,7 @@ checkReleaseAuditWarnings
 if [[ $JENKINS == "true" || $RUN_TESTS == "true" ]] ; then
   runTests
   (( RESULT = RESULT + $? ))
-  runContribTests
+  # runContribTests
   (( RESULT = RESULT + $? ))
 fi
 checkInjectSystemFaults
