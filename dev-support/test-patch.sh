@@ -759,7 +759,8 @@ of hadoop-common prior to running the unit tests in $ordered_modules"
     $MVN clean install -fae -D${PROJECT_NAME}PatchProcess > $test_logfile 2>&1
     test_build_result=$?
     cat $test_logfile
-    module_test_timeouts=`$AWK '/^Running / { if (last) { print last } last=$2 } /^Tests run: / { last="" }' $test_logfile`
+    # module_test_timeouts=`$AWK '/^Running / { if (last) { print last } last=$2 } /^Tests run: / { last="" }' $test_logfile`
+    module_test_timeouts=""
     if [[ -n "$module_test_timeouts" ]] ; then
       test_timeouts="$test_timeouts
 $module_test_timeouts"
