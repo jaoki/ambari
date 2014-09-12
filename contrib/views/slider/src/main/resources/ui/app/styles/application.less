@@ -16,10 +16,19 @@
  * limitations under the License.
  */
 
+.table-row() {
+  margin: 10px 0;
+}
+
 html {
   overflow-y: scroll;
 }
-
+.icon-minus-sign {
+  color: #FF4B4B;
+}
+.tooltip {
+  z-index: 1500;
+}
 .popover {
   max-width: 800px;
 }
@@ -329,6 +338,9 @@ a {
   }
   .slider-modal-body {
     max-height: 505px;
+    .wizard-content{
+      background-color: #ffffff;
+    }
   }
   .next-btn {
     margin-left: 5px;
@@ -350,25 +362,39 @@ a {
     }
     pre {
       margin-left: 30px;
+      max-height: 124px;
     }
   }
   #step2 {
     .table-container {
-      max-height: 225px;
+      max-height: 248px;
       border: 1px solid #e3e3e3;
       padding: 5px;
-      margin-bottom: 20px;
-      overflow-y: auto;
       border-radius: 4px;
+      overflow: hidden;
       .components-table {
         width: 100%;
         border-spacing: 10px;
         border-collapse: separate;
+        input{
+          width: 124px;
+        }
       }
       margin-bottom: 30px;
     }
   }
+  .app-wiz-configs {
+    .accordion-toggle {
+      display: block;
+    }
+    .panel-heading{
+      .icon{
+        width: 23px;
+      }
+    }
+  }
 }
+
 .app-page {
   .wrap-tabs {
     margin-top: 30px;
@@ -513,21 +539,28 @@ a {
  * App Summary Page
  */
 .app_summary {
-  .container {
-    padding-left: 0;
-    .panel-summury {
-      min-height: 400px;
-      table  tr td:last-child {
-        word-break: break-word;
+  padding-left: 0;
+  table {
+    &.no-borders {
+      td {
+        border-width: 0;
       }
     }
-    .panel-link {
-      margin-top: -5px;
-      margin-right: -7px;
+  }
+  .panel-heading {
+    font-weight: 700;
+  }
+  .panel-summary {
+    min-height: 400px;
+    td:first-child {
+      text-align: right;
     }
   }
+  .panel-link {
+    margin-top: -5px;
+    margin-right: -7px;
+  }
 }
-
 
 .chart-container {
   cursor: default;
@@ -609,18 +642,30 @@ a {
   }
 }
 
-
 .app_configs {
   a.accordion-toggle {
     display: block;
   }
+  .panel-heading{
+    .icon{
+      width: 24px;
+    }
+  }
   .row {
-    margin: 10px 0;
+    .table-row();
     textarea {
       height: 200px;
       padding-left: 5px;
       padding-right: 5px;
       resize: none;
+    }
+    textarea[disabled] {
+      cursor: not-allowed;
+      background-color: #eeeeee;
+    }
+    input[disabled] {
+      cursor: not-allowed;
+      background-color: #eeeeee;
     }
   }
 }
@@ -682,5 +727,11 @@ a {
   }
   .icon-question-sign {
     color: #999;
+  }
+}
+
+.flex-popup {
+  .row {
+    .table-row();
   }
 }
