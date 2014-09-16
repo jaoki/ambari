@@ -228,7 +228,7 @@ downloadPatch () {
   against trunk revision ${SVN_REVISION}."
 
     ### Copy in any supporting files needed by this process
-    cp -r $SUPPORT_DIR/lib/* ./lib
+    # cp -r $SUPPORT_DIR/lib/* ./lib
     #PENDING: cp -f $SUPPORT_DIR/etc/checkstyle* ./src/test
   ### Copy the patch file to $PATCH_DIR
   else
