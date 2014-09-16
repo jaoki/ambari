@@ -161,16 +161,6 @@ parseArgs() {
       echo "Unable to locate the patch file $PATCH_FILE"
       cleanupAndExit 0
     fi
-    ### Check if $PATCH_DIR exists. If it does not exist, create a new directory
-    if [[ ! -e "$PATCH_DIR" ]] ; then
-      mkdir "$PATCH_DIR"
-      if [[ $? == 0 ]] ; then 
-        echo "$PATCH_DIR has been created"
-      else
-        echo "Unable to create $PATCH_DIR"
-        cleanupAndExit 0
-      fi
-    fi
     ### Obtain the patch filename to append it to the version number
     defect=`basename $PATCH_FILE`
   fi
@@ -1002,6 +992,18 @@ if [[ $JENKINS == "true" ]] ; then
     exit 100
   fi
 fi
+
+### Check if $PATCH_DIR exists. If it does not exist, create a new directory
+if [[ ! -e "$PATCH_DIR" ]] ; then
+  mkdir "$PATCH_DIR"
+  if [[ $? == 0 ]] ; then 
+    echo "$PATCH_DIR has been created"
+  else
+    echo "Unable to create $PATCH_DIR"
+    cleanupAndExit 0
+  fi
+fi
+
 downloadPatch
 verifyPatch
 (( RESULT = RESULT + $? ))
