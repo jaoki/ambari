@@ -1698,7 +1698,7 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ServerValidatorM
   addDynamicProperties: function (configs) {
     var allConfigs = this.get('stepConfigs').findProperty('serviceName', this.get('content.serviceName')).get('configs');
     var templetonHiveProperty = allConfigs.someProperty('name', 'templeton.hive.properties');
-    if (!templetonHiveProperty && this.get('content.serviceName') === 'WEBHCAT') {
+    if (!templetonHiveProperty && this.get('content.serviceName') === 'HIVE') {
       configs.pushObject({
         "name": "templeton.hive.properties",
         "templateName": ["hivemetastore_host"],
@@ -2136,7 +2136,7 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ServerValidatorM
       hostProperty: 'hivemetastore_host',
       componentName: 'HIVE_SERVER',
       serviceName: 'HIVE',
-      serviceUseThis: ['WEBHCAT']
+      serviceUseThis: ['HIVE']
     },
     {
       hostProperty: 'oozieserver_host',
@@ -2160,7 +2160,7 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ServerValidatorM
     {
       hostProperty: 'webhcatserver_host',
       componentName: 'WEBHCAT_SERVER',
-      serviceName: 'WEBHCAT',
+      serviceName: 'HIVE',
       serviceUseThis: [],
       m: true
     },
@@ -2168,7 +2168,7 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ServerValidatorM
       hostProperty: 'zookeeperserver_hosts',
       componentName: 'ZOOKEEPER_SERVER',
       serviceName: 'ZOOKEEPER',
-      serviceUseThis: ['HBASE', 'WEBHCAT'],
+      serviceUseThis: ['HBASE', 'HIVE'],
       m: true
     },
     {
@@ -2328,9 +2328,10 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ServerValidatorM
    * trigger showItemsShouldBeRestarted popup with hosts that requires resetart
    * @method showHostsShouldBeRestarted
    */
-  showHostsShouldBeRestarted: function () {
+  showHostsShouldBeRestarted: function (restartRequiredHostsAndComponents) {
     var hosts = [];
-    for (var hostName in this.get('content.restartRequiredHostsAndComponents')) {
+    var rhc = this.get('content.restartRequiredHostsAndComponents') || restartRequiredHostsAndComponents;
+    for (var hostName in rhc) {
       hosts.push(hostName);
     }
     var hostsText = hosts.length == 1 ? Em.I18n.t('common.host') : Em.I18n.t('common.hosts');
@@ -2342,8 +2343,8 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ServerValidatorM
    * trigger showItemsShouldBeRestarted popup with components that requires resetart
    * @method showComponentsShouldBeRestarted
    */
-  showComponentsShouldBeRestarted: function () {
-    var rhc = this.get('content.restartRequiredHostsAndComponents');
+  showComponentsShouldBeRestarted: function (restartRequiredHostsAndComponents) {
+    var rhc = this.get('content.restartRequiredHostsAndComponents') || restartRequiredHostsAndComponents;
     var hostsComponets = [];
     var componentsObject = {};
     for (var hostName in rhc) {
