@@ -50,7 +50,7 @@ public class MaintenanceStateHelper {
   private static final String NAGIOS_COMPONENT = "NAGIOS_SERVER";
   private static final String NAGIOS_ACTION_NAME = "nagios_update_ignore";
   private static final Logger LOG = LoggerFactory.getLogger(MaintenanceStateHelper.class);
-  public static final String UPDATE_NAGIOS_REQUEST_NAME = "Update Nagios configuration";
+  public static final String UPDATE_NAGIOS_REQUEST_NAME = "Adjusting ignored alerts for Services/Hosts Maintenance Mode";
 
   @Inject
   private Clusters clusters;
@@ -279,7 +279,7 @@ public class MaintenanceStateHelper {
     ExecuteActionRequest actionRequest = new ExecuteActionRequest(
       clusterName, null, NAGIOS_ACTION_NAME,
       Collections.singletonList(resourceFilter),
-      level, params);
+      level, params, true);
 
     // createAction() may throw an exception if Nagios is in MS or
     // if Nagios is absent in cluster. This exception is usually ignored at

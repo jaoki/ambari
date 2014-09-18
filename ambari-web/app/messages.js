@@ -658,7 +658,6 @@ Em.I18n.translations = {
   'installer.step7.popup.validation.request.failed.body': 'Config validaition failed.',
   'installer.step7.popup.validation.warning.header': 'Configurations',
   'installer.step7.popup.validation.warning.body': 'Some service configurations are not configured properly. We recommend you review and change the highlighted configuration values. Are you sure you want to proceed without correcting configurations?',
-
   'installer.step7.oozie.database.new': 'New Derby Database',
   'installer.step7.hive.database.new': 'New MySQL Database',
 
@@ -1459,6 +1458,7 @@ Em.I18n.translations = {
   'services.service.config_groups.switchGroupTextFull':'Switch to \'{0}\' host config group',
   'services.service.config_groups.switchGroupTextShort':'Switch to \'{0}\'',
   'services.reassign.closePopup':'Move {0} wizard is in progress. You must allow the wizard to complete for Ambari to be in usable state. If you choose to quit, you must follow manual instructions to complete or revert move {0} wizard as documented in the Ambari User Guide. Are you sure you want to exit the wizard?',
+  'services.reassign.error.fewHosts':'You must have at least 2 hosts in your cluster to run Move Wizard.',
 
   'services.reassign.step1.header':'Get Started',
   'services.reassign.step1.message1': 'This wizard will walk you through moving {0}.<br/>',
@@ -1694,6 +1694,7 @@ Em.I18n.translations = {
   'hosts.host.details.restartAllComponents':'Restart All Components',
   'hosts.host.details.refreshConfigs':'Refresh configs',
   'hosts.host.details.for.postfix':'{0} for host',
+  'host.host.details.installClients': 'Install clients',
 
   'host.host.componentFilter.master':'Master Components',
   'host.host.componentFilter.slave':'Slave Components',
@@ -2262,6 +2263,7 @@ Em.I18n.translations = {
   'common.combobox.dropdown.final': 'Final properties',
   'common.combobox.dropdown.changed': 'Changed properties',
   'common.combobox.dropdown.issues': 'Show property issues',
+  'common.combobox.dropdown.warnings': 'Show property warnings',
 
   'quick.links.error.label': 'Hostname is undefined',
   'quick.links.publicHostName': '{0} ({1})',

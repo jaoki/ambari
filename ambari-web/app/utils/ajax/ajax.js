@@ -911,6 +911,19 @@ var urls = {
       };
     }
   },
+  'cluster.save_provisioning_state': {
+    'real': '/clusters/{clusterName}',
+    'type': 'PUT',
+    'format': function (data) {
+      return {
+        data: JSON.stringify({
+          "Clusters": {
+            "provisioning_state": data.state
+          }
+        })
+      };
+    }
+  },
   'admin.high_availability.polling': {
     'real': '/clusters/{clusterName}/requests/{requestId}?fields=tasks/*,Requests/*',
     'mock': ''
@@ -1368,7 +1381,7 @@ var urls = {
     mock: '/data/users/privileges_{userName}.json'
   },
   'router.login.clusters': {
-    'real': '/clusters',
+    'real': '/clusters?fields=Clusters/provisioning_state',
     'mock': '/data/clusters/info.json'
   },
   'router.logoff': {
@@ -1376,7 +1389,7 @@ var urls = {
     'mock': ''
   },
   'router.authentication': {
-    'real': '/clusters',
+    'real': '/clusters?fields=Clusters/provisioning_state',
     'mock': '/data/clusters/info.json',
     'format': function() {
       return {
@@ -1715,7 +1728,7 @@ var urls = {
    * Get all instances of all views across versions
    */
   'views.instances': {
-    'real': '/views?fields=versions/instances/ViewInstanceInfo,versions/ViewVersionInfo/label',
+    'real': '/views?fields=versions/instances/ViewInstanceInfo,versions/ViewVersionInfo/label&versions/ViewVersionInfo/system=false',
     'mock': '/data/views/instances.json'
   },
   'host.host_component.flume.metrics': {
@@ -1905,6 +1918,15 @@ var urls = {
   'service.serviceConfigVersion.get': {
     real: '/clusters/{clusterName}/configurations/service_config_versions?service_name={serviceName}&service_config_version={serviceConfigVersion}',
     mock: '/data/configurations/service_version.json'
+  },
+  'service.serviceConfigVersions.get.multiple': {
+    real: '/clusters/{clusterName}/configurations/service_config_versions?service_name={serviceName}&service_config_version.in({serviceConfigVersions})',
+    mock: '/data/configurations/service_version.json',
+    format: function(data) {
+      return {
+        serviceConfigVersions: data.serviceConfigVersions.join(',')
+      }
+    }
   },
   'service.serviceConfigVersion.revert': {
     'real': '/clusters/{clusterName}',

@@ -17,6 +17,40 @@
  */
 package org.apache.ambari.server.api.util;
 
+import com.google.inject.Injector;
+import org.apache.ambari.server.AmbariException;
+import org.apache.ambari.server.api.services.AmbariMetaInfo;
+import org.apache.ambari.server.metadata.ActionMetadata;
+import org.apache.ambari.server.state.ClientConfigFileDefinition;
+import org.apache.ambari.server.state.CommandScriptDefinition;
+import org.apache.ambari.server.state.ComponentInfo;
+import org.apache.ambari.server.state.ConfigHelper;
+import org.apache.ambari.server.state.CustomCommandDefinition;
+import org.apache.ambari.server.state.DependencyInfo;
+import org.apache.ambari.server.state.PropertyInfo;
+import org.apache.ambari.server.state.ServiceInfo;
+import org.apache.ambari.server.state.ServiceOsSpecific;
+import org.apache.ambari.server.state.StackInfo;
+import org.apache.ambari.server.state.stack.ConfigurationXml;
+import org.apache.ambari.server.state.stack.RepositoryXml;
+import org.apache.ambari.server.state.stack.ServiceMetainfoXml;
+import org.apache.ambari.server.state.stack.StackMetainfoXml;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.namespace.QName;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,33 +64,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.namespace.QName;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
-
-import org.apache.ambari.server.AmbariException;
-import org.apache.ambari.server.api.services.AmbariMetaInfo;
-import org.apache.ambari.server.metadata.ActionMetadata;
-import org.apache.ambari.server.state.*;
-import org.apache.ambari.server.state.stack.ConfigurationXml;
-import org.apache.ambari.server.state.stack.RepositoryXml;
-import org.apache.ambari.server.state.stack.ServiceMetainfoXml;
-import org.apache.ambari.server.state.stack.StackMetainfoXml;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
-
-import com.google.inject.Injector;
 
 /**
  * Helper methods for providing stack extension behavior -
@@ -145,7 +152,9 @@ public class StackExtensionHelper {
     ServiceInfo mergedServiceInfo = new ServiceInfo();
     mergedServiceInfo.setSchemaVersion(childService.getSchemaVersion());
     mergedServiceInfo.setName(childService.getName());
-    mergedServiceInfo.setComment(childService.getComment());
+    mergedServiceInfo.setComment(childService.getComment() != null ?
+        childService.getComment() :
+        parentService.getComment());
     mergedServiceInfo.setVersion(childService.getVersion());
     mergedServiceInfo.setDisplayName(
         childService.getDisplayName() != null ?
@@ -218,12 +227,16 @@ public class StackExtensionHelper {
     mergedServiceInfo.setCustomCommands(mergedCustomCommands);
     
     // metrics
-    if (null == childService.getMetricsFile() && null != parentService.getMetricsFile())
+    if (null != childService.getMetricsFile())
+      mergedServiceInfo.setMetricsFile(childService.getMetricsFile());
+    else if (null != parentService.getMetricsFile())
       mergedServiceInfo.setMetricsFile(parentService.getMetricsFile());
     
     // alerts
-    if (null == childService.getAlertsFile() && null != parentService.getAlertsFile())
-      mergedServiceInfo.setAlertsFile(parentService.getAlertsFile());    
+    if (null != childService.getAlertsFile())
+      mergedServiceInfo.setAlertsFile(childService.getAlertsFile());
+    else if (null != parentService.getAlertsFile())
+      mergedServiceInfo.setAlertsFile(parentService.getAlertsFile());
 
     populateComponents(mergedServiceInfo, parentService, childService);
 
@@ -423,12 +436,24 @@ public class StackExtensionHelper {
     // Map services with unique names
     Map<String, ServiceInfo> serviceInfoMap = new HashMap<String,
       ServiceInfo>();
+    List<ServiceInfo> serviceInfoList = null;
     // Iterate with oldest parent first - all stacks are populated
+    StackInfo parentStack = null;
     while(lt.hasPrevious()) {
-      StackInfo parentStack = lt.previous();
-      List<ServiceInfo> serviceInfoList = parentStack.getServices();
+      if (parentStack == null) {
+        parentStack = lt.previous();
+        serviceInfoList = parentStack.getServices();
+        for (ServiceInfo service : serviceInfoList){
+          if (!service.isDeleted()) {
+            serviceInfoMap.put(service.getName(), service);
+          }
+        }
+        continue;
+      }
+      StackInfo currentStackInfo = lt.previous();
+      serviceInfoList = currentStackInfo.getServices();
       
-      mergeStacks(parentStack, stackInfo);
+      mergeStacks(parentStack, currentStackInfo);
       
       for (ServiceInfo service : serviceInfoList) {
         ServiceInfo existingService = serviceInfoMap.get(service.getName());
@@ -437,7 +462,7 @@ public class StackExtensionHelper {
           continue;
         }
 
-        if (existingService == null) {
+        if (existingService == null && !service.isDeleted()) {
           serviceInfoMap.put(service.getName(), service);
         } else {
           // Redefined service - merge with parent
@@ -465,6 +490,7 @@ public class StackExtensionHelper {
         }
         
       }
+      parentStack = currentStackInfo;
     }
     return new ArrayList<ServiceInfo>(serviceInfoMap.values());
   }
@@ -501,8 +527,8 @@ public class StackExtensionHelper {
   }
 
   void populateServicesForStack(StackInfo stackInfo) throws
-          ParserConfigurationException, SAXException,
-          XPathExpressionException, IOException, JAXBException {
+      ParserConfigurationException, SAXException,
+      XPathExpressionException, IOException, JAXBException {
     List<ServiceInfo> services = new ArrayList<ServiceInfo>();
     File servicesFolder = new File(stackRoot.getAbsolutePath() + File
       .separator + stackInfo.getName() + File.separator + stackInfo.getVersion()
@@ -535,29 +561,33 @@ public class StackExtensionHelper {
 
           //Reading v2 service metainfo (may contain multiple services)
           // Get services from metadata
-          ServiceMetainfoXml smiv2x =
-                  unmarshal(ServiceMetainfoXml.class, metainfoFile);
-          List<ServiceInfo> serviceInfos = smiv2x.getServices();
-          for (ServiceInfo serviceInfo : serviceInfos) {
-            serviceInfo.setSchemaVersion(AmbariMetaInfo.SCHEMA_VERSION_2);
+          try {
+            ServiceMetainfoXml smiv2x =
+                unmarshal(ServiceMetainfoXml.class, metainfoFile);
+            List<ServiceInfo> serviceInfos = smiv2x.getServices();
+            for (ServiceInfo serviceInfo : serviceInfos) {
+              serviceInfo.setSchemaVersion(AmbariMetaInfo.SCHEMA_VERSION_2);
 
-            // Find service package folder
-            String servicePackageDir = resolveServicePackageFolder(
-                    stackRoot.getAbsolutePath(), stackInfo,
-                    serviceFolder.getName(), serviceInfo.getName());
-            serviceInfo.setServicePackageFolder(servicePackageDir);
+              // Find service package folder
+              String servicePackageDir = resolveServicePackageFolder(
+                  stackRoot.getAbsolutePath(), stackInfo,
+                  serviceFolder.getName(), serviceInfo.getName());
+              serviceInfo.setServicePackageFolder(servicePackageDir);
 
-            // process metrics.json
-            if (metricsJson.exists())
-              serviceInfo.setMetricsFile(metricsJson);
-            if (alertsJson.exists())
-              serviceInfo.setAlertsFile(alertsJson);
+              // process metrics.json
+              if (metricsJson.exists())
+                serviceInfo.setMetricsFile(metricsJson);
+              if (alertsJson.exists())
+                serviceInfo.setAlertsFile(alertsJson);
 
-            // Get all properties from all "configs/*-site.xml" files
-            setPropertiesFromConfigs(serviceFolder, serviceInfo);
+              // Get all properties from all "configs/*-site.xml" files
+              setPropertiesFromConfigs(serviceFolder, serviceInfo);
 
-            // Add now to be removed while iterating extension graph
-            services.add(serviceInfo);
+              // Add now to be removed while iterating extension graph
+              services.add(serviceInfo);
+            }
+          } catch (JAXBException e) {
+            LOG.warn("Error while parsing metainfo.xml for a service: " + serviceFolder.getAbsolutePath(), e);
           }
         }
       } catch (Exception e) {
@@ -590,13 +620,13 @@ public class StackExtensionHelper {
       servicePackageFolder = expectedSubPath;
       String message = String.format(
               "Service package folder for service %s" +
-                      "for stack %s has been resolved to %s",
+                      " for stack %s has been resolved to %s",
               serviceName, stackId, servicePackageFolder);
       LOG.debug(message);
     } else {
         String message = String.format(
                 "Service package folder %s for service %s " +
-                        "for stack %s does not exist.",
+                        " for stack %s does not exist.",
                 packageDir.getAbsolutePath(), serviceName, stackId);
         LOG.debug(message);
     }
@@ -730,8 +760,7 @@ public class StackExtensionHelper {
     ConfigurationXml configuration = unmarshal(ConfigurationXml.class, configFile);
     String fileName = configFile.getName();
     stackInfo.getProperties().addAll(getProperties(configuration, fileName));
-    int extIndex = fileName.indexOf(AmbariMetaInfo.SERVICE_CONFIG_FILE_NAME_POSTFIX);
-    String configType = fileName.substring(0, extIndex);
+    String configType = ConfigHelper.fileNameToConfigType(fileName);
 
     addConfigType(stackInfo.getConfigTypes(), configType);
     setConfigTypeAttributes(stackInfo.getConfigTypes(), configuration, configType);
@@ -778,8 +807,7 @@ public class StackExtensionHelper {
     ConfigurationXml configuration = unmarshal(ConfigurationXml.class, configFile);
     String fileName = configFile.getName();
     serviceInfo.getProperties().addAll(getProperties(configuration, fileName));
-    int extIndex = fileName.indexOf(AmbariMetaInfo.SERVICE_CONFIG_FILE_NAME_POSTFIX);
-    String configType = fileName.substring(0, extIndex);
+    String configType = ConfigHelper.fileNameToConfigType(fileName);
 
     addConfigType(serviceInfo.getConfigTypes(), configType);
     setConfigTypeAttributes(serviceInfo.getConfigTypes(), configuration, configType);
@@ -817,8 +845,7 @@ public class StackExtensionHelper {
     if (configurations != null) {
       Map<String, Map<String, Map<String, String>>> configTypes = new HashMap<String, Map<String, Map<String, String>>>();
       for (PropertyInfo configuration : configurations) {
-        int extIndex = configuration.getFilename().indexOf(AmbariMetaInfo.SERVICE_CONFIG_FILE_NAME_POSTFIX);
-        String configType = configuration.getFilename().substring(0, extIndex);
+        String configType = ConfigHelper.fileNameToConfigType(configuration.getFilename());
         
         if (!configTypes.containsKey(configType)) {
           Map<String, Map<String, String>> properties = new HashMap<String, Map<String, String>>();

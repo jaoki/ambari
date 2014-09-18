@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,7 +43,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -56,7 +56,9 @@ import org.apache.slider.api.ClusterDescription;
 import org.apache.slider.client.SliderClient;
 import org.apache.slider.common.SliderKeys;
 import org.apache.slider.common.params.ActionCreateArgs;
+import org.apache.slider.common.params.ActionFlexArgs;
 import org.apache.slider.common.params.ActionFreezeArgs;
+import org.apache.slider.common.params.ActionInstallPackageArgs;
 import org.apache.slider.common.params.ActionThawArgs;
 import org.apache.slider.common.tools.SliderFileSystem;
 import org.apache.slider.core.exceptions.SliderException;
@@ -87,6 +89,8 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
   private ViewContext viewContext;
   private List<SliderAppType> appTypes;
   private Integer createAppCounter = -1;
+  @Inject
+  private SliderAppsAlerts sliderAlerts;
 
   private String getAppsFolderPath() {
     return viewContext.getAmbariProperty("resources.dir") + "/apps";
@@ -129,7 +133,7 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
     ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
     Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
     try {
-      T value = UserGroupInformation.getBestUGI(null, "yarn").doAs(
+      T value = UserGroupInformation.getBestUGI(null, viewContext.getUsername()).doAs(
           new PrivilegedExceptionAction<T>() {
             @Override
             public T run() throws Exception {
@@ -227,17 +231,17 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
             if (appMasterData == null) {
               appMasterData = sliderAppClient.getAppMasterData();
             }
-            if ("urls".equals(property.toLowerCase())) {
+            if (appMasterData!=null && "urls".equals(property.toLowerCase())) {
               if (quickLinks.isEmpty()) {
                 quickLinks = sliderAppClient
                     .getQuickLinks(appMasterData.publisherUrl);
               }
               app.setUrls(quickLinks);
-            } else if ("configs".equals(property.toLowerCase())) {
+            } else if (appMasterData!=null && "configs".equals(property.toLowerCase())) {
               Map<String, Map<String, String>> configs = sliderAppClient
                   .getConfigs(appMasterData.publisherUrl);
               app.setConfigs(configs);
-            } else if ("jmx".equals(property.toLowerCase())) {
+            } else if (appMasterData!=null && "jmx".equals(property.toLowerCase())) {
               if (quickLinks.isEmpty()) {
                 quickLinks = sliderAppClient
                     .getQuickLinks(appMasterData.publisherUrl);
@@ -247,10 +251,12 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
                 List<SliderAppType> appTypes = getSliderAppTypes(null);
                 if (appTypes != null && appTypes.size() > 0) {
                   for (SliderAppType appType : appTypes) {
-                    logger.info("TYPE: " + appType.getTypeName() + "   "
-                        + app.getType());
-                    logger.info("VERSION: " + appType.getTypeVersion() + "   "
-                        + app.getAppVersion());
+                    if (logger.isDebugEnabled()) {
+                      logger.debug("TYPE: " + appType.getTypeName() + "   "
+                          + app.getType());
+                      logger.debug("VERSION: " + appType.getTypeVersion() + "   "
+                          + app.getAppVersion());
+                    }
                     if ((appType.getTypeName() != null && appType.getTypeName()
                         .equalsIgnoreCase(app.getType()))
                         && (appType.getTypeVersion() != null && appType
@@ -268,7 +274,6 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
               app.setConfigs(configs);
             } else if ("components".equals(property.toLowerCase())) {
               try {
-                System.setProperty(SliderKeys.HADOOP_USER_NAME, "yarn");
                 ClusterDescription description = sliderClient
                     .getClusterDescription(yarnApp.getName());
                 if (description != null && description.status != null
@@ -314,11 +319,20 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
                               containerId, containerDataMap);
                         }
                       }
+                      // Set total instances count from statistics
                       appComponent.setInstanceCount(appComponent
                           .getActiveContainers().size()
                           + appComponent.getCompletedContainers().size());
+                      if (description.statistics != null
+                          && description.statistics.containsKey(componentEntry.getKey())) {
+                        Map<String, Integer> statisticsMap = description.statistics.get(componentEntry.getKey());
+                        if (statisticsMap.containsKey("containers.desired")) {
+                          appComponent.setInstanceCount(statisticsMap.get("containers.desired"));
+                        }
+                      }
                     }
                   }
+                  app.setAlerts(sliderAlerts.generateComponentsAlerts(componentTypeMap, app.getType()));
                   app.setComponents(componentTypeMap);
                 }
               } catch (UnknownApplicationInstanceException e) {
@@ -361,7 +375,7 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
     SliderClient client = new SliderClient() {
       @Override
       public String getUsername() throws IOException {
-        return "yarn";
+        return viewContext.getUsername();
       }
 
       @Override
@@ -370,7 +384,7 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
         // Override the default FS client to the calling user
         try {
           FileSystem fs = FileSystem.get(FileSystem.getDefaultUri(getConfig()),
-              getConfig(), "yarn");
+              getConfig(), viewContext.getUsername());
           SliderFileSystem fileSystem = new SliderFileSystem(fs, getConfig());
           Field fsField = SliderClient.class
               .getDeclaredField("sliderFileSystem");
@@ -446,9 +460,20 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
     return yarnConfig;
   }
 
+  private boolean areViewParametersSet() {
+    String hdfsPath = viewContext.getProperties().get(PROPERTY_HDFS_ADDRESS);
+    String rmAddress = viewContext.getProperties().get(PROPERTY_YARN_RM_ADDRESS);
+    String rmSchedulerAddress = viewContext.getProperties().get(PROPERTY_YARN_RM_SCHEDULER_ADDRESS);
+    String zkQuorum = viewContext.getProperties().get(PROPERTY_ZK_QUOROM);
+    return hdfsPath!=null && rmAddress!=null && rmSchedulerAddress!=null && zkQuorum!=null;
+  }
+
   @Override
   public List<SliderApp> getSliderApps(final Set<String> properties)
       throws YarnException, IOException, InterruptedException {
+    if (!areViewParametersSet()) {
+      return Collections.emptyList();
+    }
     return invokeSliderClientRunnable(new SliderClientContextRunnable<List<SliderApp>>() {
       @Override
       public List<SliderApp> run(SliderClient sliderClient)
@@ -513,6 +538,9 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
   @Override
   public List<SliderAppType> getSliderAppTypes(Set<String> properties) {
     if (appTypes == null) {
+      if (!areViewParametersSet()) {
+        return Collections.emptyList();
+      }
       appTypes = loadAppTypes();
     }
     return appTypes;
@@ -571,6 +599,8 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
                 appTypeComponent.setName(component.getName());
                 appTypeComponent.setYarnMemory(1024);
                 appTypeComponent.setYarnCpuCores(1);
+                // Updated below if present in resources.json
+                appTypeComponent.setInstanceCount(1);
                 // appTypeComponent.setPriority(component.);
                 if (component.getMinInstanceCount() != null) {
                   appTypeComponent.setInstanceCount(Integer.parseInt(component
@@ -636,7 +666,8 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
   public String createSliderApp(JsonObject json) throws IOException,
       YarnException, InterruptedException {
     if (json.has("name") && json.has("typeConfigs")
-        && json.has("typeComponents")) {
+        && json.has("typeComponents") && json.has("typeName")) {
+      final String appType = json.get("typeName").getAsString();
       final String appName = json.get("name").getAsString();
       JsonObject configs = json.get("typeConfigs").getAsJsonObject();
       JsonArray componentsArray = json.get("typeComponents").getAsJsonArray();
@@ -671,16 +702,21 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
       saveAppConfigs(configs, componentsArray, appConfigJsonFile);
       saveAppResources(componentsArray, resourcesJsonFile);
 
-      String hdfsLocation = viewContext.getProperties().get(PROPERTY_HDFS_ADDRESS);
       final ActionCreateArgs createArgs = new ActionCreateArgs();
       createArgs.template = appConfigJsonFile;
       createArgs.resources = resourcesJsonFile;
-      createArgs.image = new Path(hdfsLocation
-          + "/user/yarn/agent/slider-agent.tar.gz");
       
+      final ActionInstallPackageArgs installArgs = new ActionInstallPackageArgs();
+      SliderAppType sliderAppType = getSliderAppType(appType, null);
+      String localAppPackageFileName = sliderAppType.getTypePackageFileName();
+      installArgs.name = appType;
+      installArgs.packageURI = getAppsFolderPath() + "/" + localAppPackageFileName;
+      installArgs.replacePkg = true;
+
       return invokeSliderClientRunnable(new SliderClientContextRunnable<String>() {
         @Override
         public String run(SliderClient sliderClient) throws YarnException, IOException, InterruptedException {
+          sliderClient.actionInstallPkg(installArgs);
           sliderClient.actionCreate(appName, createArgs);
           ApplicationId applicationId = sliderClient.applicationId;
           if (applicationId != null) {
@@ -796,4 +832,33 @@ public class SliderAppsViewControllerImpl implements SliderAppsViewController {
     });
     logger.info("Thawed Slider App [" + appId + "] with response: " + applicationId.toString());
   }
+
+  @Override
+  public void flexApp(final String appId, final Map<String, Integer> componentsMap)
+      throws YarnException, IOException, InterruptedException {
+    ApplicationId applicationId = invokeSliderClientRunnable(new SliderClientContextRunnable<ApplicationId>() {
+      @Override
+      public ApplicationId run(SliderClient sliderClient) throws YarnException,
+          IOException, InterruptedException {
+        Set<String> properties = new HashSet<String>();
+        properties.add("id");
+        properties.add("name");
+        final SliderApp sliderApp = getSliderApp(appId, properties);
+        if (sliderApp == null) {
+          throw new ApplicationNotFoundException(appId);
+        }
+        ActionFlexArgs flexArgs = new ActionFlexArgs();
+        flexArgs.parameters.add(sliderApp.getName());
+        for (Entry<String, Integer> e : componentsMap.entrySet()) {
+          flexArgs.componentDelegate.componentTuples.add(e.getKey());
+          flexArgs.componentDelegate.componentTuples.add(e.getValue()
+              .toString());
+        }
+        sliderClient.actionFlex(sliderApp.getName(), flexArgs);
+        return sliderClient.applicationId;
+      }
+    });
+    logger.info("Flexed Slider App [" + appId + "] with response: " + applicationId);
+  }
+
 }
