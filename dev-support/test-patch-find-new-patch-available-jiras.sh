@@ -20,8 +20,8 @@ BASEDIR=$(pwd)
 TEMPDIR=${BASEDIR}/tmp
 
 JIRAAVAILPATCHQUERY="https://issues.apache.org/jira/sr/jira.issueviews:searchrequest-xml/temp/SearchRequest.xml?jqlQuery=project+in+%28AMBARI%29+AND+status+%3D+%22Patch+Available%22+ORDER+BY+updated+DESC&tempMax=1000"
-# TESTPATCHJOBURL="https://builds.apache.org/job/Ambari-trunk-test-patch"
-TESTPATCHJOBURL="http://10.103.219.57:8080/job/Ambari-trunk-test-patch"
+TESTPATCHJOBURL="https://builds.apache.org/job/Ambari-trunk-test-patch"
+# TESTPATCHJOBURL="http://10.103.219.57:8080/job/Ambari-trunk-test-patch"
 TOKEN=""
 SUBMIT="false"
 DELETEHISTORYFILE="false"
