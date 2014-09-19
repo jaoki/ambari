@@ -1026,6 +1026,9 @@ checkTests
 applyPatch
 APPLY_PATCH_RET=$?
 (( RESULT = RESULT + $APPLY_PATCH_RET ))
+
+echo "after applyPatch $RESULT"
+
 if [[ $APPLY_PATCH_RET != 0 ]] ; then
   submitJiraComment 1
   cleanupAndExit 1
@@ -1043,11 +1046,17 @@ checkJavadocWarnings
 ### Checkstyle not implemented yet
 #checkStyle
 #(( RESULT = RESULT + $? ))
+
+echo "before buildAndInstall $RESULT"
+
 buildAndInstall
 # checkEclipseGeneration
-(( RESULT = RESULT + $? ))
+# (( RESULT = RESULT + $? ))
 # checkFindbugsWarnings
-(( RESULT = RESULT + $? ))
+# (( RESULT = RESULT + $? ))
+
+echo "before checkReleaseAuditWarnings $RESULT"
+
 checkReleaseAuditWarnings
 (( RESULT = RESULT + $? ))
 
