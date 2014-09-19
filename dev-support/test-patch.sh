@@ -955,11 +955,6 @@ $comment"
 ### Cleanup files
 cleanupAndExit () {
   local result=$1
-  if [[ $JENKINS == "true" ]] ; then
-    if [ -e "$PATCH_DIR" ] ; then
-      mv $PATCH_DIR $BASEDIR
-    fi
-  fi
   echo ""
   echo ""
   echo "======================================================================"
