@@ -1015,9 +1015,12 @@ fi
 checkAuthor
 (( RESULT = RESULT + $? ))
 
-if [[ $JENKINS == "true" ]] ; then
-  cleanUpXml
-fi
+# if [[ $JENKINS == "true" ]] ; then
+ #  cleanUpXml
+# fi
+
+echo "before checkTests $RESULT"
+
 checkTests
 (( RESULT = RESULT + $? ))
 applyPatch
