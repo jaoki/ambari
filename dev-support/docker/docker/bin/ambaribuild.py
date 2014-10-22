@@ -43,7 +43,7 @@ def buildAmbari(stackDistribution):
 		stackDistributionParam = "-Dstack.distribution=" + stackDistribution
 	proc = subprocess.Popen("mvn -B clean install package rpm:rpm -Dmaven.clover.skip=true -Dfindbugs.skip=true "
 						+ SKIP_TEST + " "
-						+ stackDistributionParam + " -Dpython.ver=\"python >= 2.6\" -Preplaceurl",
+						+ stackDistributionParam + " -Dpython.ver=\"python >= 2.6\"",
 			shell=True,
 			cwd="/tmp/ambari")
 	return proc.wait()
