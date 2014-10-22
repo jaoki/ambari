@@ -92,9 +92,15 @@ def startAmbariAgent(waitUntilRegistered = True):
 			shell=True)
 	proc.wait()
 	if waitUntilRegistered:
-		waitUntilAmbariAgentRegistered()
+		if not waitUntilAmbariAgentRegistered():
+			print "ERROR: ambari-agent was not registered."
+			sys.exit(1)
 	
 def waitUntilAmbariAgentRegistered():
+	'''
+	return True if ambari agent is found registered.
+	return False if timeout
+	'''
 	count = 0
 	while count < 20:
 		count += 1
@@ -106,8 +112,9 @@ def waitUntilAmbariAgentRegistered():
 		hostsResultString = proc.stdout.read()
 		hostsResultJson = json.loads(hostsResultString)
 		if len(hostsResultJson["items"]) != 0:
-			break
+			return True
 		time.sleep(5)
+	return False
 
 def postBlueprint():
 	proc = subprocess.Popen("curl -X POST -D - " +
