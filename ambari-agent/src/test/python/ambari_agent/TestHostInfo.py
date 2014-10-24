@@ -187,8 +187,11 @@ class TestHostInfo(TestCase):
                                               "koji-override-0/$releasever"])
       self.assertFalse(package['repoName'] in ["AMBARI.dev-1.x"])
 
+  @patch.object(OSCheck, 'get_os_family')
   @patch.object(PackagesAnalyzer, 'subprocessWithTimeout')
-  def test_analyze_yum_output_err(self, subprocessWithTimeout_mock):
+  def test_analyze_yum_output_err(self, subprocessWithTimeout_mock, get_os_family_mock):
+    get_os_family_mock.return_value = OSConst.REDHAT_FAMILY
+    
     packageAnalyzer = PackagesAnalyzer()
 
     result = {}
@@ -466,7 +469,7 @@ class TestHostInfo(TestCase):
     self.assertEquals(result[0]['name'], 'service1')
     self.assertEquals(result[0]['desc'], '')
     self.assertEquals(str(subproc_popen.call_args_list),
-                      "[call(['/sbin/service', 'service1', 'status'], stderr=-1, stdout=-1)]")
+                      "[call(['service', 'service1', 'status'], stderr=-1, stdout=-1)]")
 
     p.returncode = 1
     p.communicate.return_value = ('out', 'err')

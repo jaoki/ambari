@@ -1095,6 +1095,7 @@ Em.I18n.translations = {
   'admin.addSecurity.falcon.user.httpUser': 'Falcon SPNEGO User',
   'admin.addSecurity.user.yarn.atsUser': 'YARN ATS User',
   'admin.addSecurity.user.yarn.atsHTTPUser': 'YARN ATS HTTP User',
+  'admin.addSecurity.knox.user': 'Knox Gateway',
   'admin.addSecurity.enable.onClose': 'You are in the process of enabling security on your cluster. ' +
     'Are you sure you want to quit? If you quit, ' +
     'you may have to re-run the security wizard from the beginning to enable security.',
@@ -1380,6 +1381,24 @@ Em.I18n.translations = {
   'services.service.info.metrics.yarn.apps.states.pending': 'Pending',
   'services.service.info.metrics.yarn.apps.states.running': 'Running',
   'services.service.info.metrics.yarn.apps.states.submitted': 'Submitted',
+
+  'services.service.info.metrics.kafka.server.brokerTopic.title': 'Broker Topics',
+  'services.service.info.metrics.kafka.server.brokerTopic.displayNames.AllTopicsBytesOutPerSec': 'Bytes Out',
+  'services.service.info.metrics.kafka.server.brokerTopic.displayNames.AllTopicsBytesInPerSec': 'Bytes In',
+  'services.service.info.metrics.kafka.server.brokerTopic.displayNames.AllTopicsMessagesInPerSec': 'Messages In',
+  'services.service.info.metrics.kafka.server.ReplicaManager.title': 'Replica Manager',
+  'services.service.info.metrics.kafka.server.ReplicaManager.displayNames.PartitionCount': 'Partiotions count',
+  'services.service.info.metrics.kafka.server.ReplicaManager.displayNames.UnderReplicatedPartitions': 'Under Replicated Partiotions',
+  'services.service.info.metrics.kafka.server.ReplicaManager.displayNames.LeaderCount': 'Leader Count',
+  'services.service.info.metrics.kafka.controller.ControllerStats.title': 'Controller Status',
+  'services.service.info.metrics.kafka.controller.ControllerStats.displayNames.LeaderElectionRateAndTimeMs': 'Leader Election Rate And Time',
+  'services.service.info.metrics.kafka.controller.ControllerStats.displayNames.UncleanLeaderElectionsPerSec': 'Unclean Leader Election',
+  'services.service.info.metrics.kafka.controller.KafkaController.title': 'Active Controller Count',
+  'services.service.info.metrics.kafka.controller.KafkaController.displayNames.ActiveControllerCount': 'Active Controller Count',
+  'services.service.info.metrics.kafka.log.LogFlushStats.title': 'Log Flush Status',
+  'services.service.info.metrics.kafka.log.LogFlushStats.displayNames.LogFlushRateAndTimeMs': 'Log Flush Rate amd Time',
+  'services.service.info.metrics.kafka.server.ReplicaFetcherManager.title': 'Replica MaxLag',
+  'services.service.info.metrics.kafka.server.ReplicaFetcherManager.displayNames.Replica-MaxLag': 'Replica MaxLag',
 
   'services.service.info.menu.summary':'Summary',
   'services.service.info.menu.configs':'Configs',

@@ -20,24 +20,27 @@ limitations under the License.
 from resource_management import *
 import status_params
 import os
+import itertools
 
 config = Script.get_config()
 tmp_dir = Script.get_tmp_dir()
 
-#RPM versioning support
-rpm_version = default("/configurations/cluster-env/rpm_version", None)
+hdp_stack_version = str(config['hostLevelParams']['stack_version'])
+stack_is_hdp22_or_further = not (hdp_stack_version.startswith('2.0') or hdp_stack_version.startswith('2.1'))
 
 #hadoop params
-if rpm_version:
+if stack_is_hdp22_or_further:
   mapreduce_libs_path = "/usr/hdp/current/hadoop-mapreduce-client/*"
   hadoop_libexec_dir = "/usr/hdp/current/hadoop-client/libexec"
   hadoop_bin = "/usr/hdp/current/hadoop-client/sbin"
   hadoop_bin_dir = "/usr/hdp/current/hadoop-client/bin"
+  hadoop_home = "/usr/hdp/current/hadoop-client"
 else:
   mapreduce_libs_path = "/usr/lib/hadoop-mapreduce/*"
   hadoop_libexec_dir = "/usr/lib/hadoop/libexec"
   hadoop_bin = "/usr/lib/hadoop/sbin"
   hadoop_bin_dir = "/usr/bin"
+  hadoop_home = "/usr/lib/hadoop"
 
 hadoop_conf_dir = "/etc/hadoop/conf"
 hadoop_conf_empty_dir = "/etc/hadoop/conf.empty"
@@ -199,10 +202,21 @@ HdfsDirectory = functools.partial(
 )
 
 io_compression_codecs = config['configurations']['core-site']['io.compression.codecs']
-if not "com.hadoop.compression.lzo" in io_compression_codecs:
-  exclude_packages = ["lzo", "hadoop-lzo", "hadoop-lzo-native", "liblzo2-2"]
-else:
-  exclude_packages = []
+lzo_enabled = "com.hadoop.compression.lzo" in io_compression_codecs
+
+lzo_packages_to_family = {
+  "any": ["hadoop-lzo"],
+  "redhat": ["lzo", "hadoop-lzo-native"],
+  "suse": ["lzo", "hadoop-lzo-native"],
+  "ubuntu": ["liblzo2-2"]
+}
+lzo_packages_for_current_host = lzo_packages_to_family['any'] + lzo_packages_to_family[System.get_instance().os_family]
+all_lzo_packages = set(itertools.chain(*lzo_packages_to_family.values()))
+ 
+exclude_packages = []
+if not lzo_enabled:
+  exclude_packages += all_lzo_packages
+  
 name_node_params = default("/commandParams/namenode", None)
 
 #hadoop params
@@ -210,11 +224,8 @@ hadoop_env_sh_template = config['configurations']['hadoop-env']['content']
 
 #hadoop-env.sh
 java_home = config['hostLevelParams']['java_home']
-stack_version = str(config['hostLevelParams']['stack_version'])
 
-stack_is_hdp22_or_further = not (stack_version.startswith('2.0') or stack_version.startswith('2.1'))
-
-if stack_version.startswith('2.0') and System.get_instance().os_family != "suse":
+if hdp_stack_version.startswith('2.0') and System.get_instance().os_family != "suse":
   # deprecated rhel jsvc_path
   jsvc_path = "/usr/libexec/bigtop-utils"
 else:

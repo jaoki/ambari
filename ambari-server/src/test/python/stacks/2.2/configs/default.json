@@ -45,12 +45,18 @@
             "yarn.resourcemanager.scheduler.address": "c6401.ambari.apache.org:8030"
         },
         "cluster-env": {
-            "rpm_version": "2.2.0.0",
             "security_enabled": "false",
             "ignore_groupsusers_create": "false",
             "smokeuser": "ambari-qa",
             "kerberos_domain": "EXAMPLE.COM",
             "user_group": "hadoop"
+        },
+        "webhcat-site": {
+            "templeton.jar": "/usr/hdp/current/hive-webhcat/share/webhcat/svr/lib/hive-webhcat-*.jar",
+            "templeton.pig.archive": "hdfs:///hdp/apps/{{ hdp_stack_version }}/pig/pig-{{ component_version }}.{{ hdp_stack_version }}.tar.gz",
+            "templeton.hive.archive": "hdfs:///hdp/apps/{{ hdp_stack_version }}/hive/hive-{{ component_version }}.{{ hdp_stack_version }}.tar.gz",
+            "templeton.sqoop.archive": "hdfs:///hdp/apps/{{ hdp_stack_version }}/sqoop/sqoop-{{ component_version }}.{{ hdp_stack_version }}.tar.gz",
+            "templeton.streaming.jar": "hdfs:///hdp/apps/{{ hdp_stack_version }}/mr/hadoop-streaming-{{ component_version }}.{{ hdp_stack_version }}.jar"
         },
         "slider-log4j": {
             "content": "log4jproperties\nline2"

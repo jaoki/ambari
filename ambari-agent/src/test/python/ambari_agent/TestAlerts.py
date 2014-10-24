@@ -25,7 +25,10 @@ from ambari_agent.alerts.collector import AlertCollector
 from ambari_agent.alerts.metric_alert import MetricAlert
 from ambari_agent.alerts.port_alert import PortAlert
 from ambari_agent.alerts.script_alert import ScriptAlert
+from ambari_agent.alerts.web_alert import WebAlert
 from ambari_agent.apscheduler.scheduler import Scheduler
+
+from collections import namedtuple
 from mock.mock import patch
 from unittest import TestCase
 
@@ -44,8 +47,9 @@ class TestAlerts(TestCase):
   def test_start(self, aps_add_interval_job_mock, aps_start_mock):
     test_file_path = os.path.join('ambari_agent', 'dummy_files')
     test_stack_path = os.path.join('ambari_agent', 'dummy_files')
+    test_host_scripts_path = os.path.join('ambari_agent', 'dummy_files')
 
-    ash = AlertSchedulerHandler(test_file_path, test_stack_path)
+    ash = AlertSchedulerHandler(test_file_path, test_stack_path, test_host_scripts_path)
     ash.start()
 
     self.assertTrue(aps_add_interval_job_mock.called)
@@ -129,30 +133,24 @@ class TestAlerts(TestCase):
       "source": {
         "type": "SCRIPT",
         "path": "test_script.py",
-        "reporting": {
-          "ok": {
-            "text": "TCP OK - {0:.4f} response time on port {1}"
-          },
-          "critical": {
-            "text": "Could not load process info: {0}"
-          }
-        }
       }
     }
 
     # normally set by AlertSchedulerHandler
-    json['source']['stacks_dir'] = os.path.join('ambari_agent', 'dummy_files')
+    json['source']['stacks_directory'] = os.path.join('ambari_agent', 'dummy_files')
+    json['source']['host_scripts_directory'] = os.path.join('ambari_agent', 'host_scripts')
 
     collector = AlertCollector()
     sa = ScriptAlert(json, json['source'])
-    sa.set_helpers(collector, '')
+    sa.set_helpers(collector, {'foo-site/bar': 'rendered-bar', 'foo-site/baz':'rendered-baz'} )
     self.assertEquals(json['source']['path'], sa.path)
-    self.assertEquals(json['source']['stacks_dir'], sa.stacks_dir)
+    self.assertEquals(json['source']['stacks_directory'], sa.stacks_dir)
+    self.assertEquals(json['source']['host_scripts_directory'], sa.host_scripts_dir)
 
     sa.collect()
 
     self.assertEquals('WARNING', collector.alerts()[0]['state'])
-    self.assertEquals('all is not well', collector.alerts()[0]['text'])
+    self.assertEquals('bar is rendered-bar, baz is rendered-baz', collector.alerts()[0]['text'])
 
 
   @patch.object(MetricAlert, "_load_jmx")
@@ -168,7 +166,9 @@ class TestAlerts(TestCase):
       "uuid": "c1f73191-4481-4435-8dae-fd380e4c0be1",
       "source": {
         "type": "METRIC",
-        "uri": "http://myurl:8633",
+        "uri": {
+          "http": "{{hdfs-site/dfs.datanode.http.address}}"
+        },
         "jmx": {
           "property_list": [
             "someJmxObject/value",
@@ -196,7 +196,7 @@ class TestAlerts(TestCase):
 
     collector = AlertCollector()
     ma = MetricAlert(json, json['source'])
-    ma.set_helpers(collector, '')
+    ma.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80'})
     ma.collect()
 
     self.assertEquals('CRITICAL', collector.alerts()[0]['state'])
@@ -205,18 +205,176 @@ class TestAlerts(TestCase):
     del json['source']['jmx']['value']
     collector = AlertCollector()
     ma = MetricAlert(json, json['source'])
-    ma.set_helpers(collector, '')
+    ma.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80'})
     ma.collect()
 
     self.assertEquals('OK', collector.alerts()[0]['state'])
     self.assertEquals('ok_arr: 1 3 None', collector.alerts()[0]['text'])
+
+
+  @patch.object(MetricAlert, "_load_jmx")
+  def test_alert_uri_structure(self, ma_load_jmx_mock):
+    json = {
+      "name": "cpu_check",
+      "service": "HDFS",
+      "component": "NAMENODE",
+      "label": "NameNode process",
+      "interval": 6,
+      "scope": "host",
+      "enabled": True,
+      "uuid": "c1f73191-4481-4435-8dae-fd380e4c0be1",
+      "source": {
+        "type": "METRIC",
+        "uri": {
+          "http": "{{hdfs-site/dfs.datanode.http.address}}",
+          "https": "{{hdfs-site/dfs.datanode.https.address}}",
+          "https_property": "{{hdfs-site/dfs.http.policy}}",
+          "https_property_value": "HTTPS_ONLY"
+        },
+        "jmx": {
+          "property_list": [
+            "someJmxObject/value",
+            "someOtherJmxObject/value"
+          ],
+          "value": "{0}"
+        },
+        "reporting": {
+          "ok": {
+            "text": "ok_arr: {0} {1} {2}",
+          },
+          "warning": {
+            "text": "",
+            "value": 10
+          },
+          "critical": {
+            "text": "crit_arr: {0} {1} {2}",
+            "value": 20
+          }
+        }
+      }
+    }
+
+    ma_load_jmx_mock.return_value = [1,1]
     
+    # run the alert without specifying any keys; an exception should be thrown
+    # indicating that there was no URI and the result is UNKNOWN
+    collector = AlertCollector()
+    ma = MetricAlert(json, json['source'])
+    ma.set_helpers(collector, '')
+    ma.collect()
+
+    self.assertEquals('UNKNOWN', collector.alerts()[0]['state'])
+
+    # set 2 properties that make no sense wihtout the main URI properties 
+    collector = AlertCollector()
+    ma = MetricAlert(json, json['source'])
+    ma.set_helpers(collector, {'hdfs-site/dfs.http.policy': 'HTTP_ONLY'})
+    ma.collect()
+    
+    self.assertEquals('UNKNOWN', collector.alerts()[0]['state'])
+    
+    # set an actual property key (http)
+    collector = AlertCollector()
+    ma = MetricAlert(json, json['source'])
+    ma.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80', 
+        'hdfs-site/dfs.http.policy': 'HTTP_ONLY'})
+    ma.collect()
+    
+    self.assertEquals('OK', collector.alerts()[0]['state'])
+    
+    # set an actual property key (https)
+    collector = AlertCollector()
+    ma = MetricAlert(json, json['source'])
+    ma.set_helpers(collector, {'hdfs-site/dfs.datanode.https.address': '1.2.3.4:443', 
+        'hdfs-site/dfs.http.policy': 'HTTP_ONLY'})
+    ma.collect()
+    
+    self.assertEquals('OK', collector.alerts()[0]['state'])    
+
+    # set both (http and https)
+    collector = AlertCollector()
+    ma = MetricAlert(json, json['source'])
+    ma.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80', 
+        'hdfs-site/dfs.datanode.https.address': '1.2.3.4:443', 
+        'hdfs-site/dfs.http.policy': 'HTTP_ONLY'})
+    ma.collect()
+    
+    self.assertEquals('OK', collector.alerts()[0]['state'])    
+
+
+  @patch.object(WebAlert, "_make_web_request")
+  def test_web_alert(self, wa_make_web_request_mock):
+    json = {
+      "name": "webalert_test",
+      "service": "HDFS",
+      "component": "DATANODE",
+      "label": "WebAlert Test",
+      "interval": 1,
+      "scope": "HOST",
+      "enabled": True,
+      "uuid": "c1f73191-4481-4435-8dae-fd380e4c0be1",
+      "source": {
+        "type": "WEB",
+        "uri": {
+          "http": "{{hdfs-site/dfs.datanode.http.address}}",
+          "https": "{{hdfs-site/dfs.datanode.https.address}}",
+          "https_property": "{{hdfs-site/dfs.http.policy}}",
+          "https_property_value": "HTTPS_ONLY"
+        },
+        "reporting": {
+          "ok": {
+            "text": "ok: {0}",
+          },
+          "warning": {
+            "text": "warning: {0}",
+          },
+          "critical": {
+            "text": "critical: {1}:{2}",
+          }
+        }
+      }
+    }
+
+    WebResponse = namedtuple('WebResponse', 'status_code time_millis')
+    wa_make_web_request_mock.return_value = WebResponse(200,1.234)
+
+    # run the alert and check HTTP 200    
+    collector = AlertCollector()
+    alert = WebAlert(json, json['source'])
+    alert.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80'})
+    alert.collect()
+
+    self.assertEquals('OK', collector.alerts()[0]['state'])
+    self.assertEquals('ok: 200', collector.alerts()[0]['text'])
+
+    # run the alert and check HTTP 500
+    wa_make_web_request_mock.return_value = WebResponse(500,1.234)
+    collector = AlertCollector()
+    alert = WebAlert(json, json['source'])
+    alert.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80'})
+    alert.collect()
+    
+    self.assertEquals('WARNING', collector.alerts()[0]['state'])
+    self.assertEquals('warning: 500', collector.alerts()[0]['text'])
+
+    # run the alert and check critical
+    wa_make_web_request_mock.return_value = WebResponse(0,0)
+     
+    collector = AlertCollector()
+    alert = WebAlert(json, json['source'])
+    alert.set_helpers(collector, {'hdfs-site/dfs.datanode.http.address': '1.2.3.4:80'})
+    alert.collect()
+    
+    self.assertEquals('CRITICAL', collector.alerts()[0]['state'])
+    self.assertEquals('critical: 1.2.3.4:80', collector.alerts()[0]['text'])
+
 
   def test_reschedule(self):
     test_file_path = os.path.join('ambari_agent', 'dummy_files')
     test_stack_path = os.path.join('ambari_agent', 'dummy_files')
-
-    ash = AlertSchedulerHandler(test_file_path, test_stack_path)
+    test_host_scripts_path = os.path.join('ambari_agent', 'dummy_files')
+    
+    ash = AlertSchedulerHandler(test_file_path, test_stack_path, test_host_scripts_path)
     ash.start()
     
     self.assertEquals(1, ash.get_job_count())
@@ -266,8 +424,9 @@ class TestAlerts(TestCase):
   def test_disabled_definitions(self):
     test_file_path = os.path.join('ambari_agent', 'dummy_files')
     test_stack_path = os.path.join('ambari_agent', 'dummy_files')
+    test_host_scripts_path = os.path.join('ambari_agent', 'dummy_files')
 
-    ash = AlertSchedulerHandler(test_file_path, test_stack_path)
+    ash = AlertSchedulerHandler(test_file_path, test_stack_path, test_host_scripts_path)
     ash.start()
 
     self.assertEquals(1, ash.get_job_count())
@@ -313,12 +472,14 @@ class TestAlerts(TestCase):
     
     # verify enabled alert was scheduled
     self.assertEquals(3, ash.get_job_count())
-    
+
+
   def test_immediate_alert(self):
     test_file_path = os.path.join('ambari_agent', 'dummy_files')
     test_stack_path = os.path.join('ambari_agent', 'dummy_files')
+    test_host_scripts_path = os.path.join('ambari_agent', 'dummy_files')
 
-    ash = AlertSchedulerHandler(test_file_path, test_stack_path)
+    ash = AlertSchedulerHandler(test_file_path, test_stack_path, test_host_scripts_path)
     ash.start()
 
     self.assertEquals(1, ash.get_job_count())

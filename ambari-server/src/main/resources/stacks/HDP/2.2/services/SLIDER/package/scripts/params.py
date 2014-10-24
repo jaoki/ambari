@@ -23,11 +23,11 @@ from resource_management import *
 # server configurations
 config = Script.get_config()
 
-#RPM versioning support
-rpm_version = default("/configurations/cluster-env/rpm_version", None)
+hdp_stack_version = str(config['hostLevelParams']['stack_version'])
+stack_is_hdp22_or_further = not (hdp_stack_version.startswith('2.0') or hdp_stack_version.startswith('2.1'))
 
 #hadoop params
-if rpm_version:
+if stack_is_hdp22_or_further:
   slider_bin_dir = '/usr/hdp/current/slider-client/bin'
 else:
   slider_bin_dir = "/usr/lib/slider/bin"
@@ -43,3 +43,5 @@ slider_env_sh_template = config['configurations']['slider-env']['content']
 java64_home = config['hostLevelParams']['java_home']
 log4j_props = config['configurations']['slider-log4j']['content']
 slider_cmd = format("{slider_bin_dir}/slider")
+storm_slider_conf_dir= '/usr/hdp/current/storm-slider-client/conf'
+slider_home_dir= '/usr/hdp/current/slider-client'

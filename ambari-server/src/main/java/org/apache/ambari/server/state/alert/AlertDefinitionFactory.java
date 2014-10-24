@@ -19,6 +19,8 @@ package org.apache.ambari.server.state.alert;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Type;
 import java.util.HashSet;
 import java.util.List;
@@ -29,6 +31,7 @@ import java.util.UUID;
 
 import org.apache.ambari.server.AmbariException;
 import org.apache.ambari.server.orm.entities.AlertDefinitionEntity;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,28 +78,77 @@ public class AlertDefinitionFactory {
 
   /**
    * Gets a list of all of the alert definitions defined in the specified JSON
-   * {@link File} for the given service.
+   * {@link File} for the given service. Each of the JSON files should have a
+   * mapping between the service and the alerts defined for that service. This
+   * is necessary since some services are combined in a single
+   * {@code metainfo.xml} and only have a single directory on the stack.
    *
    * @param alertDefinitionFile
+   *          the JSON file from the stack to read (not {@code null}).
    * @param serviceName
-   * @return
+   *          the name of the service to extract definitions for (not
+   *          {@code null}).
+   * @return the definitions for the specified service, or an empty set.
    * @throws AmbariException
    *           if there was a problem reading the file or parsing the JSON.
    */
   public Set<AlertDefinition> getAlertDefinitions(File alertDefinitionFile,
       String serviceName) throws AmbariException {
-    Map<String,List<AlertDefinition>> definitionMap = null;
+    try {
+      FileReader fileReader = new FileReader(alertDefinitionFile);
+      return getAlertDefinitions(fileReader, serviceName);
+    } catch (IOException ioe) {
+      String message = "Could not read the alert definition file";
+      LOG.error(message, ioe);
+      throw new AmbariException(message, ioe);
+    }
+  }
+
+  /**
+   * Gets a list of all of the alert definitions defined in the resource pointed
+   * to by the specified reader for the given service. There should have a
+   * mapping between the service and the alerts defined for that service. This
+   * is necessary since some services are combined in a single
+   * {@code metainfo.xml} and only have a single directory on the stack.
+   * <p/>
+   * The supplied reader is closed when this method completes.
+   *
+   * @param reader
+   *          the reader to read from (not {@code null}). This will be closed
+   *          after reading is done.
+   * @param serviceName
+   *          the name of the service to extract definitions for (not
+   *          {@code null}).
+   * @return the definitions for the specified service, or an empty set.
+   * @throws AmbariException
+   *           if there was a problem reading or parsing the JSON.
+   */
+  public Set<AlertDefinition> getAlertDefinitions(Reader reader,
+      String serviceName) throws AmbariException {
+
+    // { MAPR : {definitions}, YARN : {definitions} }
+    Map<String, Map<String, List<AlertDefinition>>> serviceDefinitionMap = null;
 
     try {
-      Type type = new TypeToken<Map<String, List<AlertDefinition>>>(){}.getType();
-
-      definitionMap = m_gson.fromJson(new FileReader(alertDefinitionFile), type);
+      Type type = new TypeToken<Map<String, Map<String, List<AlertDefinition>>>>() {}.getType();
+      serviceDefinitionMap = m_gson.fromJson(reader, type);
     } catch (Exception e) {
-      LOG.error("Could not read the alert definition file", e);
-      throw new AmbariException("Could not read alert definition file", e);
+      LOG.error("Could not read the alert definitions", e);
+      throw new AmbariException("Could not read alert definitions", e);
+    } finally {
+      IOUtils.closeQuietly(reader);
     }
 
     Set<AlertDefinition> definitions = new HashSet<AlertDefinition>();
+
+    // it's OK if the service doesn't have any definitions; this can happen if
+    // 2 services are defined in a single metainfo.xml and only 1 service has
+    // alerts defined
+    Map<String, List<AlertDefinition>> definitionMap = serviceDefinitionMap.get(serviceName);
+    if (null == definitionMap) {
+      return definitions;
+    }
+
     for (Entry<String, List<AlertDefinition>> entry : definitionMap.entrySet()) {
       for (AlertDefinition ad : entry.getValue()) {
         ad.setServiceName(serviceName);
@@ -265,6 +317,10 @@ public class AlertDefinitionFactory {
         }
         case PERCENT: {
           clazz = PercentSource.class;
+          break;
+        }
+        case WEB: {
+          clazz = WebSource.class;
           break;
         }
         default:

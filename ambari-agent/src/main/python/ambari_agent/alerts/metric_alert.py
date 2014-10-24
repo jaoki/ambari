@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''
+"""
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
 distributed with this work for additional information
@@ -16,7 +16,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-'''
+"""
 
 import imp
 import json
@@ -33,26 +33,34 @@ class MetricAlert(BaseAlert):
   
   def __init__(self, alert_meta, alert_source_meta):
     super(MetricAlert, self).__init__(alert_meta, alert_source_meta)
-
-    self.uri = self._find_lookup_property(alert_source_meta['uri'])
-    self.metric_info = None
-    
+ 
+    self.metric_info = None    
     if 'jmx' in alert_source_meta:
       self.metric_info = JmxMetric(alert_source_meta['jmx'])
+
+    # extract any lookup keys from the URI structure
+    self.uri_property_keys = self._lookup_uri_property_keys(alert_source_meta['uri'])
       
   def _collect(self):
     if self.metric_info is None:
-      raise Exception("Could not determine result.  Specific metric collector is not defined.")
-
-    uri = self._lookup_property_value(self.uri)
+      raise Exception("Could not determine result. Specific metric collector is not defined.")
     
-    host = BaseAlert.get_host_from_url(uri)
+    if self.uri_property_keys is None:
+      raise Exception("Could not determine result. URL(s) were not defined.")
+
+    # use the URI lookup keys to get a final URI value to query
+    alert_uri = self._get_uri_from_structure(self.uri_property_keys)      
+    
+    logger.debug("Calculated metric URI to be {0} (ssl={1})".format(alert_uri.uri, 
+        str(alert_uri.is_ssl_enabled)))
+
+    host = BaseAlert.get_host_from_url(alert_uri.uri)
     if host is None:
       host = self.host_name
 
     port = 80 # probably not very realistic
     try:      
-      port = int(get_port_from_url(uri))
+      port = int(get_port_from_url(alert_uri.uri))
     except:
       pass
 
@@ -61,7 +69,7 @@ class MetricAlert(BaseAlert):
     value_list = []
 
     if isinstance(self.metric_info, JmxMetric):
-      value_list.extend(self._load_jmx(False, host, port, self.metric_info))
+      value_list.extend(self._load_jmx(alert_uri.is_ssl_enabled, host, port, self.metric_info))
       check_value = self.metric_info.calculate(value_list)
       value_list.append(check_value)
       
@@ -70,6 +78,7 @@ class MetricAlert(BaseAlert):
     logger.debug("Resolved value list is: {0}".format(str(value_list)))
     
     return ((collect_result, value_list))
+
   
   def __get_result(self, value):
     ok_value = self.__find_threshold('ok')
@@ -77,7 +86,7 @@ class MetricAlert(BaseAlert):
     crit_value = self.__find_threshold('critical')
     
     # critical values are higher
-    crit_direction_up = crit_value > warn_value
+    crit_direction_up = crit_value >= warn_value
     
     if crit_direction_up: 
       # critcal values are higher
@@ -109,9 +118,10 @@ class MetricAlert(BaseAlert):
           return self.RESULT_OK
 
     return None
+
     
   def __find_threshold(self, reporting_type):
-    ''' find the defined thresholds for alert values '''
+    """ find the defined thresholds for alert values """
     
     if not 'reporting' in self.alert_source_meta:
       return None
@@ -123,9 +133,10 @@ class MetricAlert(BaseAlert):
       return None
       
     return self.alert_source_meta['reporting'][reporting_type]['value']
+
     
   def _load_jmx(self, ssl, host, port, jmx_metric):
-    ''' creates a JmxMetric object that holds info about jmx-based metrics '''
+    """ creates a JmxMetric object that holds info about jmx-based metrics """
     
     logger.debug(str(jmx_metric.property_map))
     
@@ -143,6 +154,7 @@ class MetricAlert(BaseAlert):
         value_list.append(json_data[attr])
         
     return value_list
+
     
 class JmxMetric:
   def __init__(self, jmx_info):
@@ -162,6 +174,7 @@ class JmxMetric:
       if not parts[0] in self.property_map:
         self.property_map[parts[0]] = []
       self.property_map[parts[0]].append(parts[1])
+
       
   def calculate(self, args):
     if self.custom_module is not None:

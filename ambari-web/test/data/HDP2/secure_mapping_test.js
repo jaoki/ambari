@@ -18,14 +18,20 @@
 
 var App = require('app');
 require('utils/helper');
-var mappedProperties = require('data/HDP2/secure_mapping');
+var mappedHdp2Properties = require('data/HDP2/secure_mapping');
 
 describe('hdp2SiteMapping', function () {
 
   // All mapped properties should have value of string type
-  mappedProperties.forEach(function(mappedProperty){
+  mappedHdp2Properties.forEach(function(mappedProperty){
     it('Value of "' + mappedProperty.name  + '"' + ' should be string', function () {
       expect(mappedProperty.value).to.be.a('string');
+    });
+  });
+  mappedHdp2Properties.forEach(function(mappedProperty){
+    it('Value of "' + mappedProperty.name  + '"' + ' should have serviceName and filename attribute', function () {
+      expect(mappedProperty).to.have.property('serviceName');
+      expect(mappedProperty).to.have.property('filename');
     });
   });
 });
