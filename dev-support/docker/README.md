@@ -41,3 +41,11 @@ deploy: install and run ambari-server and ambari-agent, and deploy a hadoop
 -b option to rebuild ambari
 ```
 
+how to run unit test
+--------------------
+```
+cd docker
+python -m bin.test.ambaribuild_test
+
+```
+
