@@ -97,7 +97,7 @@ def start_ambari_agent(wait_until_registered = True):
 			sys.exit(1)
 
 	return retcode
-	
+
 def wait_until_ambari_agent_registered():
 	'''
 	return True if ambari agent is found registered.
