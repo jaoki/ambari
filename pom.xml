@@ -269,6 +269,7 @@
             <exclude>**/.idea/</exclude>
             <exclude>**/.classpath/</exclude>
             <exclude>**/.project/</exclude>
+            <exclude>**/.pydevproject</exclude>
             <exclude>**/.settings/</exclude>
             <exclude>.git/</exclude>
             <exclude>.pydevproject</exclude>
