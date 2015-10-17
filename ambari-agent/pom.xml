@@ -794,6 +794,7 @@
             <exclude>**/*.erb</exclude>
             <exclude>**/*.json</exclude>
             <exclude>**/*.pydevproject</exclude>
+            <exclude>**/*.project</exclude>
             <exclude>src/main/package/choco/ambari-agent.nuspec</exclude>
           </excludes>
         </configuration>

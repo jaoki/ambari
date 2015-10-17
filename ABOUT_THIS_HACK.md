@@ -27,10 +27,14 @@ The trigger should be the same when {buildNumber} in ./ambari-server/sbin/ambari
 
 ```
 Agent has 
-/var/lib/ambari-agent/src_revision
+/var/lib/ambari-agent/data/src_revision
 
 server has
 /var/lib/ambari-server/resources/src_revision
+
+vim /etc/ambari-server/conf/ambari.properties
+# Add this server.src_revision.file=/var/lib/ambari-server/resources/src_revision
+
 ```
 
 or maybe the HASH can be read from ambari-server and ambari-agent shell script

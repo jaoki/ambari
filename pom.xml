@@ -268,7 +268,7 @@
             <!--IDE and GIT files-->
             <exclude>**/.idea/</exclude>
             <exclude>**/.classpath/</exclude>
-            <exclude>**/.project/</exclude>
+            <exclude>**/.project</exclude>
             <exclude>**/.pydevproject</exclude>
             <exclude>**/.settings/</exclude>
             <exclude>.git/</exclude>
