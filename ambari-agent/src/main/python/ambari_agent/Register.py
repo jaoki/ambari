@@ -34,7 +34,7 @@ class Register:
     self.hardware = Hardware()
     self.config = config
 
-  def build(self, version, id='-1'):
+  def build(self, version, src_revision, id='-1'):
     global clusterId, clusterDefinitionRevision, firstContact
     timestamp = int(time.time()*1000)
 
@@ -52,6 +52,7 @@ class Register:
                  'hardwareProfile'   : self.hardware.get(),
                  'agentEnv'          : agentEnv,
                  'agentVersion'      : version,
+                 'srcRevision'       : src_revision,
                  'prefix'            : self.config.get('agent', 'prefix')
                }
     return register
