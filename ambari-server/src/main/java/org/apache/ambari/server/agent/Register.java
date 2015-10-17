@@ -34,6 +34,7 @@ public class Register {
   private String publicHostname;
   private AgentEnv agentEnv;
   private String agentVersion;
+  private String srcRevision;
   private String prefix;
 
   @JsonProperty("responseId")
@@ -90,12 +91,20 @@ public class Register {
     return agentVersion;
   }
 
+  public String getSrcRevision() {
+    return srcRevision;
+  }
+
   public String getPrefix() { return prefix; }
 
   public void setPrefix(String prefix) { this.prefix = prefix; }
 
   public void setAgentVersion(String agentVersion) {
     this.agentVersion = agentVersion;
+  }
+
+  public void setSrcRevision(String srcRevision) {
+    this.srcRevision = srcRevision;
   }
 
   public int getCurrentPingPort() {

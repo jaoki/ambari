@@ -144,10 +144,12 @@ public class AmbariMetaInfo {
 
   private final ActionDefinitionManager adManager = new ActionDefinitionManager();
   private String serverVersion = "undefined";
+  private String serverSrcRevision = "undefined";
 
   private File stackRoot;
   private File commonServicesRoot;
   private File serverVersionFile;
+  private File serverSrcRevisionFile;
   private File customActionRoot;
 
   @Inject
@@ -228,6 +230,8 @@ public class AmbariMetaInfo {
 
     String serverVersionFilePath = conf.getServerVersionFilePath();
     serverVersionFile = new File(serverVersionFilePath);
+    String serverSrcRevisionFilePath = conf.getServerSrcRevisionFilePath();
+    serverSrcRevisionFile = new File(serverSrcRevisionFilePath);
 
     customActionRoot = new File(conf.getCustomActionDefinitionPath());
   }
@@ -743,6 +747,13 @@ public class AmbariMetaInfo {
     Scanner scanner = new Scanner(versionFile);
     serverVersion = scanner.useDelimiter("\\Z").next();
     scanner.close();
+
+    if (!serverSrcRevisionFile.exists()) {
+      throw new AmbariException("Server Src Revision file does not exist.");
+    }
+    scanner = new Scanner(serverSrcRevisionFile);
+    serverSrcRevision = scanner.useDelimiter("\\Z").next();
+    scanner.close();
   }
 
   private void getCustomActionDefinitions(File customActionDefinitionRoot) throws JAXBException, AmbariException {
@@ -782,6 +793,10 @@ public class AmbariMetaInfo {
 
   public String getServerVersion() {
     return serverVersion;
+  }
+
+  public String getServerSrcRevision() {
+    return serverSrcRevision;
   }
 
   public boolean isOsSupported(String osType) {

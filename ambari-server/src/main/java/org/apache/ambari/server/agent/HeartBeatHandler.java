@@ -896,6 +896,17 @@ public class HeartBeatHandler {
           + ", serverVersion=" + serverVersion);
     }
 
+    String agentSrcRevision = register.getSrcRevision();
+    String serverSrcRevision = ambariMetaInfo.getServerSrcRevision();
+    if(!serverSrcRevision.equals(agentSrcRevision)){
+      LOG.warn("Received registration request from host that has a different source code revision"
+          + " agent version"
+          + ", hostname=" + hostname
+          + ", agentSrcRevision=" + agentSrcRevision
+          + ", serverSrcRevision=" + serverSrcRevision);
+    }
+    
+
     String agentOsType = getOsType(register.getHardwareProfile().getOS(),
         register.getHardwareProfile().getOSRelease());
     LOG.info("agentOsType = "+agentOsType );

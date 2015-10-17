@@ -115,6 +115,7 @@ public class Configuration {
   public static final String METADATA_DIR_PATH = "metadata.path";
   public static final String COMMON_SERVICES_DIR_PATH = "common.services.path";
   public static final String SERVER_VERSION_FILE = "server.version.file";
+  public static final String SERVER_SRC_REVISION_FILE = "server.src_revision.file";
   public static final String SERVER_VERSION_KEY = "version";
   public static final String JAVA_HOME_KEY = "java.home";
   public static final String JDK_NAME_KEY = "jdk.name";
@@ -1006,6 +1007,10 @@ public class Configuration {
     return properties.getProperty(SERVER_VERSION_FILE);
   }
 
+  public String getServerSrcRevisionFilePath() {
+    return properties.getProperty(SERVER_SRC_REVISION_FILE);
+  }
+
   /**
    * Gets ambari server version
    * @return version String
@@ -1013,6 +1018,19 @@ public class Configuration {
   public String getServerVersion() {
     try {
       return FileUtils.readFileToString(new File(getServerVersionFilePath())).trim();
+    } catch (IOException e) {
+      LOG.error("Unable to read server version file", e);
+    }
+    return null;
+  }
+
+  /**
+   * Gets ambari server src revision
+   * @return version String
+   */
+  public String getServerSrcRevision() {
+    try {
+      return FileUtils.readFileToString(new File(getServerSrcRevisionFilePath())).trim();
     } catch (IOException e) {
       LOG.error("Unable to read server version file", e);
     }
