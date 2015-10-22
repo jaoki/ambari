@@ -23,24 +23,35 @@ describe('App.ChartLinearTimeView', function () {
 
   var chartLinearTimeView = App.ChartLinearTimeView.create({});
 
-  describe('#transformData ([[1, 2], [2, 3], [3, 4]], "abc")', function () {
+  describe('#transformData', function () {
 
-    var data = [[1, 2], [2, 3], [3, 4]];
-    var name = 'abc';
-    var result = chartLinearTimeView.transformData(data, name);
+    var result;
+
+    beforeEach(function () {
+      var data = [[1, 1200000000], [2, 1200000000], [3, 1200000000]];
+      var name = 'abc';
+      sinon.stub(App.router, 'get').withArgs('userSettingsController.userSettings.timezone').returns('(UTC+00:00) Greenwich');
+      result = chartLinearTimeView.transformData(data, name);
+    });
+
+    afterEach(function () {
+      App.router.get.restore();
+    });
+
     it('"name" should be "abc" ', function () {
       expect(result.name).to.equal('abc');
     });
+
     it('data size should be 3 ', function () {
       expect(result.data.length).to.equal(3);
     });
-    it('data[0].x should be 2 ', function () {
-      expect(result.data[0].x).to.equal(2);
-    });
+
     it('data[0].y should be 1 ', function () {
       expect(result.data[0].y).to.equal(1);
     })
-  }),
+
+  });
+
   describe('#yAxisFormatter', function() {
     var tests = [
       {m:'undefined to 0',i:undefined,e:0},
@@ -58,7 +69,8 @@ describe('App.ChartLinearTimeView', function () {
         expect(chartLinearTimeView.yAxisFormatter(test.i)).to.equal(test.e);
       });
     });
-  }),
+  });
+
   describe('#checkSeries', function() {
     var tests = [
       {m:'undefined - false',i:undefined,e:false},
@@ -73,7 +85,8 @@ describe('App.ChartLinearTimeView', function () {
         expect(chartLinearTimeView.checkSeries(test.i)).to.equal(test.e);
       });
     });
-  }),
+  });
+
   describe('#BytesFormatter', function() {
     var tests = [
       {m:'undefined to "0 B"',i:undefined,e:'0 B'},
@@ -93,7 +106,8 @@ describe('App.ChartLinearTimeView', function () {
         expect(App.ChartLinearTimeView.BytesFormatter(test.i)).to.equal(test.e);
       });
     });
-  }),
+  });
+
   describe('#PercentageFormatter', function() {
     var tests = [
       {m:'undefined to "0 %"',i:undefined,e:'0 %'},
@@ -110,6 +124,7 @@ describe('App.ChartLinearTimeView', function () {
       });
     });
   });
+
   describe('#TimeElapsedFormatter', function() {
     var tests = [
       {m:'undefined to "0 ms"',i:undefined,e:'0 ms'},
@@ -208,10 +223,74 @@ describe('App.ChartLinearTimeView', function () {
       services.yarnService = [];
     });
   });
+
+  describe('#setCurrentTimeIndexFromParent', function () {
+
+    var view,
+      cases = [
+      {
+        isServiceWithEnhancedWidgets: false,
+        currentTimeIndex: 1,
+        title: 'service with enhanced widgets'
+      },
+      {
+        isServiceWithEnhancedWidgets: true,
+        currentTimeIndex: 2,
+        title: 'service without enhanced widgets'
+      },
+      {
+        currentTimeIndex: 2,
+        title: 'other view'
+      }
+    ];
+
+    beforeEach(function () {
+      view = App.ChartLinearTimeView.create({
+        controller: {},
+        parentView: {
+          currentTimeRangeIndex: 1,
+          parentView: {
+            currentTimeRangeIndex: 2
+          }
+        }
+      });
+    });
+
+    cases.forEach(function (item) {
+      it(item.title, function () {
+        view.set('controller.isServiceWithEnhancedWidgets', item.isServiceWithEnhancedWidgets);
+        view.propertyDidChange('parentView.currentTimeRangeIndex');
+        expect(view.get('currentTimeIndex')).to.equal(item.currentTimeIndex);
+      });
+    });
+
+  });
+
+  describe('#loadDataSuccessCallback', function () {
+
+    beforeEach(function () {
+      sinon.stub(chartLinearTimeView, '_refreshGraph', Em.K);
+    });
+
+    afterEach(function () {
+      chartLinearTimeView._refreshGraph.restore();
+    });
+
+    it('should refresh graph', function () {
+      var response = {
+        key: 'value'
+      };
+      chartLinearTimeView.loadDataSuccessCallback(response);
+      expect(chartLinearTimeView._refreshGraph.calledOnce).to.be.true;
+      expect(chartLinearTimeView._refreshGraph.calledWith(response)).to.be.true;
+    });
+  });
+
 });
 
 
 describe('App.ChartLinearTimeView.LoadAggregator', function () {
+
   var aggregator = App.ChartLinearTimeView.LoadAggregator;
 
   describe("#add()", function () {
@@ -326,4 +405,5 @@ describe('App.ChartLinearTimeView.LoadAggregator', function () {
       expect(aggregator.formatRequestData(request)).to.equal('f3[400,4000,15],f4[400,4000,15]');
     });
   });
+
 });

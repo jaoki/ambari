@@ -103,6 +103,13 @@
               </auto-deploy>
             </dependency>
             <dependency>
+              <name>HIVE/HIVE_CLIENT</name>
+              <scope>host</scope>
+              <auto-deploy>
+                <enabled>true</enabled>
+              </auto-deploy>
+            </dependency>
+            <dependency>
               <name>MAPREDUCE2/MAPREDUCE2_CLIENT</name>
               <scope>host</scope>
               <auto-deploy>
@@ -223,10 +230,10 @@
               <dictionaryName>hcat-env</dictionaryName>
             </configFile>
           </configFiles>
+          <configuration-dependencies>
+            <config-type>hive-site</config-type>
+          </configuration-dependencies>
         </component>
-        <configuration-dependencies>
-          <config-type>hive-site</config-type>
-        </configuration-dependencies>
       </components>
 
       <osSpecifics>

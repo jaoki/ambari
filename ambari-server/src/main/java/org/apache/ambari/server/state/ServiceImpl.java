@@ -18,7 +18,9 @@
 
 package org.apache.ambari.server.state;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -33,12 +35,16 @@ import org.apache.ambari.server.events.ServiceRemovedEvent;
 import org.apache.ambari.server.events.publishers.AmbariEventPublisher;
 import org.apache.ambari.server.orm.dao.ClusterDAO;
 import org.apache.ambari.server.orm.dao.ClusterServiceDAO;
+import org.apache.ambari.server.orm.dao.ServiceConfigDAO;
 import org.apache.ambari.server.orm.dao.ServiceDesiredStateDAO;
 import org.apache.ambari.server.orm.dao.StackDAO;
+import org.apache.ambari.server.orm.entities.ClusterConfigEntity;
+import org.apache.ambari.server.orm.entities.ClusterConfigMappingEntity;
 import org.apache.ambari.server.orm.entities.ClusterEntity;
 import org.apache.ambari.server.orm.entities.ClusterServiceEntity;
 import org.apache.ambari.server.orm.entities.ClusterServiceEntityPK;
 import org.apache.ambari.server.orm.entities.ServiceComponentDesiredStateEntity;
+import org.apache.ambari.server.orm.entities.ServiceConfigEntity;
 import org.apache.ambari.server.orm.entities.ServiceDesiredStateEntity;
 import org.apache.ambari.server.orm.entities.StackEntity;
 import org.slf4j.Logger;
@@ -67,6 +73,8 @@ public class ServiceImpl implements Service {
   private Map<String, ServiceComponent> components;
   private final boolean isClientOnlyService;
 
+  @Inject
+  private ServiceConfigDAO serviceConfigDAO;
   @Inject
   private ClusterServiceDAO clusterServiceDAO;
   @Inject
@@ -538,6 +546,34 @@ public class ServiceImpl implements Service {
     }
   }
 
+  @Transactional
+  void deleteAllServiceConfigs() throws AmbariException {
+    LOG.info("Deleting all serviceconfigs for service"
+        + ", clusterName=" + cluster.getClusterName()
+        + ", serviceName=" + getName());
+    
+    List<ServiceConfigEntity> serviceConfigEntities = serviceConfigDAO.findByService(cluster.getClusterId(), getName());
+
+    Long maxServiceConfigEntityId = -1L;
+    ServiceConfigEntity lastServiceConfigEntity = null; // last service config by id, should have all needed clusterConfigEntities
+    
+    for (ServiceConfigEntity serviceConfigEntity : serviceConfigEntities) {
+      if(serviceConfigEntity.getServiceConfigId() > maxServiceConfigEntityId) {
+        maxServiceConfigEntityId = serviceConfigEntity.getServiceConfigId();
+        lastServiceConfigEntity = serviceConfigEntity;
+      }
+      serviceConfigDAO.remove(serviceConfigEntity);
+    }
+    
+    if(lastServiceConfigEntity != null) {
+      List<String> configTypesToDisable = new ArrayList<String>();
+      for(ClusterConfigEntity clusterConfigEntity:lastServiceConfigEntity.getClusterConfigEntities()) {
+        configTypesToDisable.add(clusterConfigEntity.getType());
+      }
+      clusterDAO.removeClusterConfigMappingEntityByTypes(cluster.getClusterId(), configTypesToDisable);
+    }
+  }
+  
   @Override
   @Transactional
   public void deleteAllComponents() throws AmbariException {
@@ -617,6 +653,7 @@ public class ServiceImpl implements Service {
       readWriteLock.writeLock().lock();
       try {
         deleteAllComponents();
+        deleteAllServiceConfigs();
 
         if (persisted) {
           removeEntities();

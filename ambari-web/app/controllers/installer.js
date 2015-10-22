@@ -236,7 +236,9 @@ App.InstallerController = App.WizardController.extend({
     App.StackConfigProperty.find().clear();
     App.Section.find().clear();
     App.SubSection.find().clear();
+    App.SubSectionTab.find().clear();
     App.Tab.find().clear();
+    this.set('stackConfigsLoaded', false);
     if (stacks && stacks.get('length')) {
       App.set('currentStackVersion', App.Stack.find().findProperty('isSelected').get('id'));
       dfd.resolve(true);
@@ -703,8 +705,7 @@ App.InstallerController = App.WizardController.extend({
   finish: function () {
     this.setCurrentStep('0');
     this.clearStorageData();
-    var persists = App.router.get('applicationController').persistKey();
-    App.router.get('applicationController').postUserPref(persists, true);
+    App.router.get('userSettingsController').postUserPref('show_bg', true);
   },
 
   /**

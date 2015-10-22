@@ -27,6 +27,7 @@ import stat
 import string
 import sys
 import tempfile
+import ambari_server.serverClassPath
 
 from ambari_commons.exceptions import FatalException
 from ambari_commons.os_check import OSCheck, OSConst
@@ -83,8 +84,6 @@ JCE_NAME_PROPERTY = "jce.name"
 JDK_DOWNLOAD_SUPPORTED_PROPERTY = "jdk.download.supported"
 JCE_DOWNLOAD_SUPPORTED_PROPERTY = "jce.download.supported"
 
-# JDBC
-JDBC_PATTERNS = {"oracle": "*ojdbc*.jar", "mysql": "*mysql*.jar", "mssql": "*sqljdbc*.jar"}
 
 #TODO property used incorrectly in local case, it was meant to be dbms name, not postgres database name,
 # has workaround for now, as we don't need dbms name if persistence_type=local
@@ -107,7 +106,6 @@ SERVER_VERSION_FILE_PATH = "server.version.file"
 
 PERSISTENCE_TYPE_PROPERTY = "server.persistence.type"
 JDBC_DRIVER_PROPERTY = "server.jdbc.driver"
-JDBC_DRIVER_PATH_PROPERTY = "server.jdbc.driver.path"
 JDBC_URL_PROPERTY = "server.jdbc.url"
 
 # connection pool (age and time are in seconds)
@@ -169,6 +167,8 @@ DEFAULT_SSL_API_PORT = 8443
 JDK_RELEASES="java.releases"
 
 VIEWS_DIR_PROPERTY = "views.dir"
+
+ACTIVE_INSTANCE_PROPERTY = "active.instance"
 
 #Common setup or upgrade message
 SETUP_OR_UPGRADE_MSG = "- If this is a new setup, then run the \"ambari-server setup\" command to create the user\n" \
@@ -522,6 +522,26 @@ def read_ambari_user():
       return user
   return None
 
+def get_is_active_instance():
+  # active.instance, if missing, will be considered to be true;
+  # if present, it should be explicitly set to "true" to set this as the active instance;
+  # any other value will be taken as a "false"
+  properties = get_ambari_properties()
+  # Get the value of active.instance.
+  active_instance_value = None
+  if properties != -1:
+    if ACTIVE_INSTANCE_PROPERTY in properties.propertyNames():
+      active_instance_value = properties[ACTIVE_INSTANCE_PROPERTY]
+
+  if active_instance_value is None:  # property is missing
+    is_active_instance = True
+  elif (active_instance_value == 'true'): # property is explicitly set to true
+    is_active_instance = True
+  else:  # any other value
+    is_active_instance = False
+
+  return is_active_instance
+
 def get_value_from_properties(properties, key, default=""):
   try:
     value = properties.get_property(key)
@@ -755,8 +775,9 @@ def read_passwd_for_alias(alias, masterKey=""):
     if masterKey is None or masterKey == "":
       masterKey = "None"
 
+    serverClassPath = ambari_server.serverClassPath.ServerClassPath(get_ambari_properties(), None)
     command = SECURITY_PROVIDER_GET_CMD.format(get_java_exe_path(),
-                                               get_full_ambari_classpath(), alias, tempFilePath, masterKey)
+                                               serverClassPath.get_full_ambari_classpath_escaped_for_shell(), alias, tempFilePath, masterKey)
     (retcode, stdout, stderr) = run_os_command(command)
     print_info_msg("Return code from credential provider get passwd: " +
                    str(retcode))
@@ -796,8 +817,9 @@ def save_passwd_for_alias(alias, passwd, masterKey=""):
     if masterKey is None or masterKey == "":
       masterKey = "None"
 
+    serverClassPath = ambari_server.serverClassPath.ServerClassPath(get_ambari_properties(), None)
     command = SECURITY_PROVIDER_PUT_CMD.format(get_java_exe_path(),
-                                               get_full_ambari_classpath(), alias, passwd, masterKey)
+                                               serverClassPath.get_full_ambari_classpath_escaped_for_shell(), alias, passwd, masterKey)
     (retcode, stdout, stderr) = run_os_command(command)
     print_info_msg("Return code from credential provider save passwd: " +
                    str(retcode))
@@ -1194,38 +1216,6 @@ class JDKRelease:
       inst_dir = "C:\\" + section_name
     return (desc, url, dest_file, jcpol_url, jcpol_file, inst_dir, reg_exp)
   pass
-
-def get_ambari_jars():
-  try:
-    conf_dir = os.environ[AMBARI_SERVER_LIB]
-    return conf_dir
-  except KeyError:
-    default_jar_location = configDefaults.DEFAULT_LIBS_DIR
-    print_info_msg(AMBARI_SERVER_LIB + " is not set, using default "
-                 + default_jar_location)
-    return default_jar_location
-
-def get_jdbc_cp():
-  jdbc_jar_path = ""
-  properties = get_ambari_properties()
-  if properties != -1:
-    jdbc_jar_path = properties[JDBC_DRIVER_PATH_PROPERTY]
-  return jdbc_jar_path
-
-def get_ambari_classpath():
-  ambari_cp = os.path.abspath(get_ambari_jars() + os.sep + "*")
-  jdbc_cp = get_jdbc_cp()
-  if len(jdbc_cp) > 0:
-    ambari_cp = ambari_cp + os.pathsep + jdbc_cp
-  return ambari_cp
-
-def get_full_ambari_classpath(conf_dir = None):
-  if conf_dir is None:
-    conf_dir = get_conf_dir()
-  cp = conf_dir + os.pathsep + get_ambari_classpath()
-  if cp.find(' ') != -1:
-    cp = '"' + cp + '"'
-  return cp
 
 def get_JAVA_HOME():
   properties = get_ambari_properties()

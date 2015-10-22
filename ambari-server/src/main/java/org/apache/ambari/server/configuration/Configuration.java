@@ -17,15 +17,29 @@
  */
 package org.apache.ambari.server.configuration;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+
+import org.apache.ambari.annotations.Experimental;
 import org.apache.ambari.server.AmbariException;
+import org.apache.ambari.server.actionmanager.Stage;
 import org.apache.ambari.server.orm.JPATableGenerationStrategy;
 import org.apache.ambari.server.orm.PersistenceType;
+import org.apache.ambari.server.orm.entities.StageEntity;
 import org.apache.ambari.server.security.ClientSecurityType;
 import org.apache.ambari.server.security.authorization.LdapServerProperties;
 import org.apache.ambari.server.security.encryption.CredentialProvider;
 import org.apache.ambari.server.state.stack.OsFamily;
+import org.apache.ambari.server.utils.Parallel;
 import org.apache.ambari.server.utils.ShellCommandUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.RandomStringUtils;
@@ -33,15 +47,8 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
 
 /**
@@ -107,7 +114,7 @@ public class Configuration {
   public static final String SRVR_DISABLED_CIPHERS = "security.server.disabled.ciphers";
   public static final String SRVR_DISABLED_PROTOCOLS = "security.server.disabled.protocols";
   public static final String RESOURCES_DIR_KEY = "resources.dir";
-  public static final String METADETA_DIR_PATH = "metadata.path";
+  public static final String METADATA_DIR_PATH = "metadata.path";
   public static final String COMMON_SERVICES_DIR_PATH = "common.services.path";
   public static final String SERVER_VERSION_FILE = "server.version.file";
   public static final String SERVER_VERSION_KEY = "version";
@@ -174,8 +181,10 @@ public class Configuration {
   public static final String SERVER_JDBC_PROPERTIES_PREFIX = "server.jdbc.properties.";
   public static final String ROLLING_UPGRADE_MIN_STACK_KEY = "rolling.upgrade.min.stack";
   public static final String ROLLING_UPGRADE_MAX_STACK_KEY = "rolling.upgrade.max.stack";
+  public static final String ROLLING_UPGRADE_SKIP_PACKAGES_PREFIXES_KEY = "rolling.upgrade.skip.packages.prefixes";
   public static final String ROLLING_UPGRADE_MIN_STACK_DEFAULT = "HDP-2.2";
   public static final String ROLLING_UPGRADE_MAX_STACK_DEFAULT = "";
+  public static final String ROLLING_UPGRADE_SKIP_PACKAGES_PREFIXES_DEFAULT = "";
 
   public static final String SERVER_JDBC_CONNECTION_POOL = "server.jdbc.connection-pool";
   public static final String SERVER_JDBC_CONNECTION_POOL_MIN_SIZE = "server.jdbc.connection-pool.min-size";
@@ -187,7 +196,7 @@ public class Configuration {
   public static final String SERVER_JDBC_CONNECTION_POOL_IDLE_TEST_INTERVAL = "server.jdbc.connection-pool.idle-test-interval";
   public static final String SERVER_JDBC_CONNECTION_POOL_ACQUISITION_RETRY_ATTEMPTS = "server.jdbc.connection-pool.acquisition-retry-attempts";
   public static final String SERVER_JDBC_CONNECTION_POOL_ACQUISITION_RETRY_DELAY = "server.jdbc.connection-pool.acquisition-retry-delay";
-  
+
   public static final String SERVER_JDBC_RCA_USER_NAME_KEY = "server.jdbc.rca.user.name";
   public static final String SERVER_JDBC_RCA_USER_PASSWD_KEY = "server.jdbc.rca.user.passwd";
   public static final String SERVER_JDBC_RCA_DRIVER_KEY = "server.jdbc.rca.driver";
@@ -241,8 +250,14 @@ public class Configuration {
   public static final String HIVE_METASTORE_PASSWORD_PROPERTY = "javax.jdo.option.ConnectionPassword";
   public static final String MASTER_KEY_PERSISTED = "security.master.key.ispersisted";
   public static final String MASTER_KEY_LOCATION = "security.master.key.location";
+  public static final String MASTER_KEYSTORE_LOCATION = "security.master.keystore.location";
   public static final String MASTER_KEY_ENV_PROP = "AMBARI_SECURITY_MASTER_KEY";
   public static final String MASTER_KEY_FILENAME_DEFAULT = "master";
+  public static final String MASTER_KEYSTORE_FILENAME_DEFAULT = "credentials.jceks";
+  public static final String TEMPORARY_KEYSTORE_RETENTION_MINUTES = "security.temporary.keystore.retention.minutes";
+  public static final long TEMPORARY_KEYSTORE_RETENTION_MINUTES_DEFAULT = 90;
+  public static final String TEMPORARY_KEYSTORE_ACTIVELY_PURGE = "security.temporary.keystore.actibely.purge";
+  public static final boolean TEMPORARY_KEYSTORE_ACTIVELY_PURGE_DEFAULT = true;
 
   /**
    * Key for repo validation suffixes.
@@ -289,6 +304,8 @@ public class Configuration {
   public static final String RECOVERY_WINDOW_IN_MIN_DEFAULT = "60";
   public static final String RECOVERY_RETRY_GAP_KEY = "recovery.retry_interval";
   public static final String RECOVERY_RETRY_GAP_DEFAULT = "5";
+  public static final String RECOVERY_DISABLED_COMPONENTS_KEY = "recovery.disabled_components";
+  public static final String RECOVERY_ENABLED_COMPONENTS_KEY = "recovery.enabled_components";
 
   /**
    * Allow proxy calls to these hosts and ports only
@@ -430,6 +447,14 @@ public class Configuration {
   private static final String TIMELINE_METRICS_CACHE_HEAP_PERCENT = "server.timeline.metrics.cache.heap.percent";
   private static final String DEFAULT_TIMELINE_METRICS_CACHE_HEAP_PERCENT = "15%";
 
+  // experimental options
+
+  /**
+   * Governs the use of {@link Parallel} to process {@link StageEntity}
+   * instances into {@link Stage}.
+   */
+  protected static final String EXPERIMENTAL_CONCURRENCY_STAGE_PROCESSING_ENABLED = "experimental.concurrency.stage_processing.enabled";
+
   /**
    * The full path to the XML file that describes the different alert templates.
    */
@@ -437,6 +462,26 @@ public class Configuration {
 
   public static final String ALERTS_EXECUTION_SCHEDULER_THREADS_KEY = "alerts.execution.scheduler.maxThreads";
   public static final String ALERTS_EXECUTION_SCHEDULER_THREADS_DEFAULT = "2";
+
+  /**
+   *   For HTTP Response header configuration for Ambari Server UI
+   */
+  public static final String HTTP_STRICT_TRANSPORT_HEADER_VALUE_KEY = "http.strict-transport-security";
+  public static final String HTTP_STRICT_TRANSPORT_HEADER_VALUE_DEFAULT = "max-age=31536000";
+  public static final String HTTP_X_FRAME_OPTIONS_HEADER_VALUE_KEY = "http.x-frame-options";
+  public static final String HTTP_X_FRAME_OPTIONS_HEADER_VALUE_DEFAULT = "DENY";
+  public static final String HTTP_X_XSS_PROTECTION_HEADER_VALUE_KEY = "http.x-xss-protection";
+  public static final String HTTP_X_XSS_PROTECTION_HEADER_VALUE_DEFAULT = "1; mode=block";
+
+  /**
+   *   For HTTP Response header configuration for Ambari Views
+   */
+  public static final String VIEWS_HTTP_STRICT_TRANSPORT_HEADER_VALUE_KEY = "views.http.strict-transport-security";
+  public static final String VIEWS_HTTP_STRICT_TRANSPORT_HEADER_VALUE_DEFAULT = "max-age=31536000";
+  public static final String VIEWS_HTTP_X_FRAME_OPTIONS_HEADER_VALUE_KEY = "views.http.x-frame-options";
+  public static final String VIEWS_HTTP_X_FRAME_OPTIONS_HEADER_VALUE_DEFAULT = "SAMEORIGIN";
+  public static final String VIEWS_HTTP_X_XSS_PROTECTION_HEADER_VALUE_KEY = "views.http.x-xss-protection";
+  public static final String VIEWS_HTTP_X_XSS_PROTECTION_HEADER_VALUE_DEFAULT = "1; mode=block";
 
   private static final Logger LOG = LoggerFactory.getLogger(
       Configuration.class);
@@ -747,7 +792,9 @@ public class Configuration {
     if (!credentialProviderInitialized) {
       try {
         credentialProvider = new CredentialProvider(null,
-          getMasterKeyLocation(), isMasterKeyPersisted());
+            getMasterKeyLocation(),
+            isMasterKeyPersisted(),
+            getMasterKeyStoreLocation());
       } catch (Exception e) {
         LOG.info("Credential provider creation failed. Reason: " + e.getMessage());
         if (LOG.isDebugEnabled()) {
@@ -880,6 +927,22 @@ public class Configuration {
   }
 
   /**
+   * @return a list of prefixes. Packages whose name starts with any of these
+   * prefixes, should be skipped during upgrade.
+   */
+  public List<String> getRollingUpgradeSkipPackagesPrefixes() {
+    String propertyValue = properties.getProperty(ROLLING_UPGRADE_SKIP_PACKAGES_PREFIXES_KEY,
+            ROLLING_UPGRADE_SKIP_PACKAGES_PREFIXES_DEFAULT);
+    ArrayList<String> res = new ArrayList<>();
+    for (String prefix : propertyValue.split(",")) {
+      if (! prefix.isEmpty()) {
+        res.add(prefix.trim());
+      }
+    }
+    return res;
+  }
+
+  /**
    * Get the map with server config parameters.
    * Keys - public constants of this class
    * @return the map with server config parameters
@@ -950,7 +1013,7 @@ public class Configuration {
    * @return String
    */
   public String getMetadataPath() {
-    return properties.getProperty(METADETA_DIR_PATH);
+    return properties.getProperty(METADATA_DIR_PATH);
   }
 
   /**
@@ -1001,6 +1064,100 @@ public class Configuration {
    */
   public boolean getApiSSLAuthentication() {
     return ("true".equals(properties.getProperty(API_USE_SSL, "false")));
+  }
+
+  /**
+   * Get the value that should be set for the <code>Strict-Transport-Security</code> HTTP response header for Ambari Server UI.
+   * <p/>
+   * By default this will be <code>max-age=31536000; includeSubDomains</code>. For example:
+   * <p/>
+   * <code>
+   * Strict-Transport-Security: max-age=31536000; includeSubDomains
+   * </code>
+   * <p/>
+   * This value may be ignored when {@link #getApiSSLAuthentication()} is <code>false</code>.
+   *
+   * @return the Strict-Transport-Security value - null or "" indicates that the value is not set
+   */
+  public String getStrictTransportSecurityHTTPResponseHeader() {
+    return properties.getProperty(HTTP_STRICT_TRANSPORT_HEADER_VALUE_KEY, HTTP_STRICT_TRANSPORT_HEADER_VALUE_DEFAULT);
+  }
+
+  /**
+   * Get the value that should be set for the <code>X-Frame-Options</code> HTTP response header for Ambari Server UI.
+   * <p/>
+   * By default this will be <code>DENY</code>. For example:
+   * <p/>
+   * <code>
+   * X-Frame-Options: DENY
+   * </code>
+   *
+   * @return the X-Frame-Options value - null or "" indicates that the value is not set
+   */
+  public String getXFrameOptionsHTTPResponseHeader() {
+    return properties.getProperty(HTTP_X_FRAME_OPTIONS_HEADER_VALUE_KEY, HTTP_X_FRAME_OPTIONS_HEADER_VALUE_DEFAULT);
+  }
+
+  /**
+   * Get the value that should be set for the <code>X-XSS-Protection</code> HTTP response header for Ambari Server UI.
+   * <p/>
+   * By default this will be <code>1; mode=block</code>. For example:
+   * <p/>
+   * <code>
+   * X-XSS-Protection: 1; mode=block
+   * </code>
+   *
+   * @return the X-XSS-Protection value - null or "" indicates that the value is not set
+   */
+  public String getXXSSProtectionHTTPResponseHeader() {
+    return properties.getProperty(HTTP_X_XSS_PROTECTION_HEADER_VALUE_KEY, HTTP_X_XSS_PROTECTION_HEADER_VALUE_DEFAULT);
+  }
+
+  /**
+   * Get the value that should be set for the <code>Strict-Transport-Security</code> HTTP response header for Ambari Views.
+   * <p/>
+   * By default this will be <code>max-age=31536000; includeSubDomains</code>. For example:
+   * <p/>
+   * <code>
+   * Strict-Transport-Security: max-age=31536000; includeSubDomains
+   * </code>
+   * <p/>
+   * This value may be ignored when {@link #getApiSSLAuthentication()} is <code>false</code>.
+   *
+   * @return the Strict-Transport-Security value - null or "" indicates that the value is not set
+   */
+  public String getViewsStrictTransportSecurityHTTPResponseHeader() {
+    return properties.getProperty(VIEWS_HTTP_STRICT_TRANSPORT_HEADER_VALUE_KEY, VIEWS_HTTP_STRICT_TRANSPORT_HEADER_VALUE_DEFAULT);
+  }
+
+  /**
+   * Get the value that should be set for the <code>X-Frame-Options</code> HTTP response header for Ambari Views.
+   * <p/>
+   * By default this will be <code>DENY</code>. For example:
+   * <p/>
+   * <code>
+   * X-Frame-Options: DENY
+   * </code>
+   *
+   * @return the X-Frame-Options value - null or "" indicates that the value is not set
+   */
+  public String getViewsXFrameOptionsHTTPResponseHeader() {
+    return properties.getProperty(VIEWS_HTTP_X_FRAME_OPTIONS_HEADER_VALUE_KEY, VIEWS_HTTP_X_FRAME_OPTIONS_HEADER_VALUE_DEFAULT);
+  }
+
+  /**
+   * Get the value that should be set for the <code>X-XSS-Protection</code> HTTP response header for Ambari Views.
+   * <p/>
+   * By default this will be <code>1; mode=block</code>. For example:
+   * <p/>
+   * <code>
+   * X-XSS-Protection: 1; mode=block
+   * </code>
+   *
+   * @return the X-XSS-Protection value - null or "" indicates that the value is not set
+   */
+  public String getViewsXXSSProtectionHTTPResponseHeader() {
+    return properties.getProperty(VIEWS_HTTP_X_XSS_PROTECTION_HEADER_VALUE_KEY, VIEWS_HTTP_X_XSS_PROTECTION_HEADER_VALUE_DEFAULT);
   }
 
   /**
@@ -1297,15 +1454,135 @@ public class Configuration {
   }
 
   public boolean isMasterKeyPersisted() {
-    String masterKeyLocation = getMasterKeyLocation();
-    File f = new File(masterKeyLocation);
-    return f.exists();
+    File masterKeyFile = getMasterKeyLocation();
+    return (masterKeyFile != null) && masterKeyFile.exists();
   }
 
-  public String getMasterKeyLocation() {
-    String defaultDir = properties.getProperty(MASTER_KEY_LOCATION,
-      properties.getProperty(SRVR_KSTR_DIR_KEY, SRVR_KSTR_DIR_DEFAULT));
-    return defaultDir + File.separator + MASTER_KEY_FILENAME_DEFAULT;
+  public File getServerKeyStoreDirectory() {
+    String path = properties.getProperty(SRVR_KSTR_DIR_KEY, SRVR_KSTR_DIR_DEFAULT);
+    return ((path == null) || path.isEmpty())
+        ? new File(".")
+        : new File(path);
+  }
+
+  /**
+   * Returns a File pointing where master key file is expected to be
+   * <p/>
+   * The master key file is named 'master'.  The directory that this file is to be found in is
+   * calculated by obtaining the directory path assigned to the Ambari property
+   * 'security.master.key.location'; else if that value is empty, then the directory is determined
+   * by calling {@link #getServerKeyStoreDirectory()}.
+   * <p/>
+   * If it exists, this file contains the key used to decrypt values stored in the master keystore.
+   *
+   * @return a File that points to the master key file
+   * @see #getServerKeyStoreDirectory()
+   * @see #MASTER_KEY_FILENAME_DEFAULT
+   */
+  public File getMasterKeyLocation() {
+    File location;
+    String path = properties.getProperty(MASTER_KEY_LOCATION);
+
+    if (StringUtils.isEmpty(path)) {
+      location = new File(getServerKeyStoreDirectory(), MASTER_KEY_FILENAME_DEFAULT);
+      LOG.debug("Value of {} is not set, using {}", MASTER_KEY_LOCATION, location.getAbsolutePath());
+    } else {
+      location = new File(path, MASTER_KEY_FILENAME_DEFAULT);
+      LOG.debug("Value of {} is {}", MASTER_KEY_LOCATION, location.getAbsolutePath());
+    }
+
+    return location;
+  }
+
+  /**
+   * Returns the location of the master keystore file.
+   * <p/>
+   * The master keystore file is named 'credentials.jceks'.  The directory that this file is to be
+   * found in is calculated by obtaining the directory path assigned to the Ambari property
+   * 'security.master.keystore.location'; else if that value is empty, then the directory is determined
+   * by calling {@link #getServerKeyStoreDirectory()}.
+   * <p/>
+   * The location is calculated by obtaining the Ambari property directory path assigned to the key
+   * 'security.master.keystore.location'. If that value is empty, then the directory is determined
+   * by {@link #getServerKeyStoreDirectory()}.
+   *
+   * @return a File that points to the master keystore file
+   * @see #getServerKeyStoreDirectory()
+   * @see #MASTER_KEYSTORE_FILENAME_DEFAULT
+   */
+  public File getMasterKeyStoreLocation() {
+    File location;
+    String path = properties.getProperty(MASTER_KEYSTORE_LOCATION);
+
+    if (StringUtils.isEmpty(path)) {
+      location = new File(getServerKeyStoreDirectory(), MASTER_KEYSTORE_FILENAME_DEFAULT);
+      LOG.debug("Value of {} is not set, using {}", MASTER_KEYSTORE_LOCATION, location.getAbsolutePath());
+    } else {
+      location = new File(path, MASTER_KEYSTORE_FILENAME_DEFAULT);
+      LOG.debug("Value of {} is {}", MASTER_KEYSTORE_LOCATION, location.getAbsolutePath());
+    }
+
+    return location;
+  }
+
+  /**
+   * Gets the temporary keystore retention time in minutes.
+   * <p/>
+   * This value is retrieved from the Ambari property named 'security.temporary.keystore.retention.minutes'.
+   * If not set, the default value of 90 (minutes) will be returned.
+   *
+   * @return a timeout value (in minutes)
+   */
+  public long getTemporaryKeyStoreRetentionMinutes() {
+    long minutes;
+    String value = properties.getProperty(TEMPORARY_KEYSTORE_RETENTION_MINUTES);
+
+    if(StringUtils.isEmpty(value)) {
+      LOG.debug("Value of {} is not set, using default value ({})",
+          TEMPORARY_KEYSTORE_RETENTION_MINUTES, TEMPORARY_KEYSTORE_RETENTION_MINUTES_DEFAULT);
+      minutes = TEMPORARY_KEYSTORE_RETENTION_MINUTES_DEFAULT;
+    }
+    else {
+      try {
+        minutes = Long.parseLong(value);
+        LOG.debug("Value of {} is {}", TEMPORARY_KEYSTORE_RETENTION_MINUTES, value);
+      } catch (NumberFormatException e) {
+        LOG.warn("Value of {} ({}) should be a number, falling back to default value ({})",
+            TEMPORARY_KEYSTORE_RETENTION_MINUTES, value, TEMPORARY_KEYSTORE_RETENTION_MINUTES_DEFAULT);
+        minutes = TEMPORARY_KEYSTORE_RETENTION_MINUTES_DEFAULT;
+      }
+    }
+
+    return minutes;
+  }
+
+  /**
+   * Gets a boolean value indicating whether to actively purge the temporary keystore when the retention
+   * time expires (true) or to passively purge when credentials are queried (false).
+   * <p/>
+   * This value is retrieved from the Ambari property named 'security.temporary.keystore.actibely.purge'.
+   * If not set, the default value of true.
+   *
+   * @return a Boolean value declaring whether to actively (true) or passively (false) purge the temporary keystore
+   */
+  public boolean isActivelyPurgeTemporaryKeyStore() {
+    String value = properties.getProperty(TEMPORARY_KEYSTORE_ACTIVELY_PURGE);
+
+    if (StringUtils.isEmpty(value)) {
+      LOG.debug("Value of {} is not set, using default value ({})",
+          TEMPORARY_KEYSTORE_ACTIVELY_PURGE, TEMPORARY_KEYSTORE_ACTIVELY_PURGE_DEFAULT);
+      return TEMPORARY_KEYSTORE_ACTIVELY_PURGE_DEFAULT;
+    } else if ("true".equalsIgnoreCase(value)) {
+      LOG.debug("Value of {} is {}", TEMPORARY_KEYSTORE_ACTIVELY_PURGE, value);
+      return true;
+    } else if ("false".equalsIgnoreCase(value)) {
+      LOG.debug("Value of {} is {}", TEMPORARY_KEYSTORE_ACTIVELY_PURGE, value);
+      return false;
+    } else {
+      LOG.warn("Value of {} should be either \"true\" or \"false\" but is \"{}\", falling back to default value ({})",
+          TEMPORARY_KEYSTORE_ACTIVELY_PURGE, value, TEMPORARY_KEYSTORE_ACTIVELY_PURGE_DEFAULT);
+      return TEMPORARY_KEYSTORE_ACTIVELY_PURGE_DEFAULT;
+    }
   }
 
   public String getSrvrDisabledCiphers() {
@@ -1417,17 +1694,17 @@ public class Configuration {
 
   public Integer getRequestReadTimeout() {
     return Integer.parseInt(properties.getProperty(REQUEST_READ_TIMEOUT,
-      REQUEST_READ_TIMEOUT_DEFAULT));
+                                                   REQUEST_READ_TIMEOUT_DEFAULT));
   }
 
   public Integer getRequestConnectTimeout() {
     return Integer.parseInt(properties.getProperty(REQUEST_CONNECT_TIMEOUT,
-        REQUEST_CONNECT_TIMEOUT_DEFAULT));
+                                                   REQUEST_CONNECT_TIMEOUT_DEFAULT));
   }
 
   public String getExecutionSchedulerConnections() {
     return properties.getProperty(EXECUTION_SCHEDULER_CONNECTIONS,
-      DEFAULT_SCHEDULER_MAX_CONNECTIONS);
+                                  DEFAULT_SCHEDULER_MAX_CONNECTIONS);
   }
 
   public Long getExecutionSchedulerMisfireToleration() {
@@ -1453,7 +1730,7 @@ public class Configuration {
 
   public String getCustomActionDefinitionPath() {
     return properties.getProperty(CUSTOM_ACTION_DEFINITION_KEY,
-      CUSTOM_ACTION_DEFINITION_DEF_VALUE);
+                                  CUSTOM_ACTION_DEFINITION_DEF_VALUE);
   }
 
   public int getAgentPackageParallelCommandsLimit() {
@@ -1465,7 +1742,7 @@ public class Configuration {
     }
     return value;
   }
-  
+
   /**
    * @param isPackageInstallationTask true, if task is for installing packages
    * @return default task timeout in seconds (string representation). This value
@@ -1502,7 +1779,7 @@ public class Configuration {
    */
   public int getClientThreadPoolSize() {
     return Integer.parseInt(properties.getProperty(
-      CLIENT_THREADPOOL_SIZE_KEY, String.valueOf(CLIENT_THREADPOOL_SIZE_DEFAULT)));
+        CLIENT_THREADPOOL_SIZE_KEY, String.valueOf(CLIENT_THREADPOOL_SIZE_DEFAULT)));
   }
 
   /**
@@ -1540,7 +1817,7 @@ public class Configuration {
    */
   public long getViewExtractionThreadPoolTimeout() {
     return Long.parseLong(properties.getProperty(
-      VIEW_EXTRACTION_THREADPOOL_TIMEOUT_KEY, String.valueOf(VIEW_EXTRACTION_THREADPOOL_TIMEOUT_DEFAULT)));
+        VIEW_EXTRACTION_THREADPOOL_TIMEOUT_KEY, String.valueOf(VIEW_EXTRACTION_THREADPOOL_TIMEOUT_DEFAULT)));
   }
 
   /**
@@ -1607,6 +1884,22 @@ public class Configuration {
    */
   public String getNodeRecoveryWindowInMin() {
     return properties.getProperty(RECOVERY_WINDOW_IN_MIN_KEY, RECOVERY_WINDOW_IN_MIN_DEFAULT);
+  }
+
+  /**
+   * Get the components for which recovery is disabled
+   * @return
+   */
+  public String getDisabledComponents() {
+    return properties.getProperty(RECOVERY_DISABLED_COMPONENTS_KEY, "");
+  }
+
+  /**
+   * Get the components for which recovery is enabled
+   * @return
+   */
+  public String getEnabledComponents() {
+    return properties.getProperty(RECOVERY_ENABLED_COMPONENTS_KEY, "");
   }
 
   /**
@@ -1756,7 +2049,7 @@ public class Configuration {
         SERVER_JDBC_CONNECTION_POOL_MAX_IDLE_TIME_EXCESS,
         DEFAULT_JDBC_POOL_EXCESS_MAX_IDLE_TIME_SECONDS));
   }
-  
+
   /**
    * Gets the number of connections that should be retrieved when the pool size
    * must increase. It's wise to set this higher than 1 since the assumption is
@@ -1774,18 +2067,18 @@ public class Configuration {
    * Gets the number of times connections should be retried to be acquired from
    * the database before giving up.
    *
-   * @return default of {@value #DEFAULT_JDBC_POOL_AQUISITION_RETRY_ATTEMPTS}
+   * @return default of {@value #DEFAULT_JDBC_POOL_ACQUISITION_RETRY_ATTEMPTS}
    */
   public int getConnectionPoolAcquisitionRetryAttempts() {
     return Integer.parseInt(properties.getProperty(
         SERVER_JDBC_CONNECTION_POOL_ACQUISITION_RETRY_ATTEMPTS,
         DEFAULT_JDBC_POOL_ACQUISITION_RETRY_ATTEMPTS));
   }
-  
+
   /**
    * Gets the delay in milliseconds between connection acquire attempts.
    *
-   * @return default of {@value #DEFAULT_JDBC_POOL_AQUISITION_RETRY_DELAY}
+   * @return default of {@value #DEFAULT_JDBC_POOL_ACQUISITION_RETRY_DELAY}
    */
   public int getConnectionPoolAcquisitionRetryDelay() {
     return Integer.parseInt(properties.getProperty(
@@ -1904,5 +2197,19 @@ public class Configuration {
       DEFAULT_TIMELINE_METRICS_CACHE_HEAP_PERCENT);
 
     return percent.trim().endsWith("%") ? percent.trim() : percent.trim() + "%";
+  }
+
+  /**
+   * Gets whether to use experiemental concurrent processing to convert
+   * {@link StageEntity} instances into {@link Stage} instances. The default is
+   * {@code false}.
+   *
+   * @return {code true} if the experimental feature is enabled, {@code false}
+   *         otherwise.
+   */
+  @Experimental
+  public boolean isExperimentalConcurrentStageProcessingEnabled() {
+    return Boolean.parseBoolean(properties.getProperty(
+        EXPERIMENTAL_CONCURRENCY_STAGE_PROCESSING_ENABLED, Boolean.FALSE.toString()));
   }
 }

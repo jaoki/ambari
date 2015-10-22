@@ -220,7 +220,7 @@ class TestFalconServer(RMFTestCase):
      u'/hadoop/falcon'),
         sudo = True,
     )
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'falcon-server', u'2.2.1.0-2135'),
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'falcon-server', u'2.2.1.0-2135'),
         sudo = True,
     )
     self.assertResourceCalled('Execute', ('tar',
@@ -504,7 +504,7 @@ class TestFalconServer(RMFTestCase):
                        hdp_stack_version = self.STACK_VERSION,
                        target = RMFTestCase.TARGET_COMMON_SERVICES)
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'falcon-server', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'falcon-server', version), sudo=True,)
     self.printResources()
 
   @patch('os.path.isfile', new=MagicMock(return_value=True))
@@ -531,7 +531,7 @@ class TestFalconServer(RMFTestCase):
                        mocks_dict = mocks_dict)
 
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'falcon-server', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'falcon-server', version), sudo=True,)
 
     self.assertResourceCalled('Execute', ('tar',
      '-xvf',
@@ -555,8 +555,8 @@ class TestFalconServer(RMFTestCase):
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'falcon', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'falcon', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'falcon', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'falcon', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])

@@ -28,6 +28,7 @@ import threading
 import urllib2
 import pprint
 from random import randint
+import subprocess
 
 import hostname
 import security
@@ -45,13 +46,15 @@ from ambari_agent.ClusterConfiguration import  ClusterConfiguration
 from ambari_agent.RecoveryManager import  RecoveryManager
 from ambari_agent.HeartbeatHandlers import HeartbeatStopHandlers, bind_signal_handlers
 from ambari_agent.ExitHelper import ExitHelper
+from resource_management.libraries.functions.version import compare_versions
+
 logger = logging.getLogger(__name__)
 
 AGENT_AUTO_RESTART_EXIT_CODE = 77
 
 class Controller(threading.Thread):
 
-  def __init__(self, config, heartbeat_stop_callback = None, range=30):
+  def __init__(self, config, server_hostname, heartbeat_stop_callback = None, range=30):
     threading.Thread.__init__(self)
     logger.debug('Initializing Controller RPC thread.')
     if heartbeat_stop_callback is None:
@@ -63,7 +66,7 @@ class Controller(threading.Thread):
     self.credential = None
     self.config = config
     self.hostname = hostname.hostname(config)
-    self.serverHostname = hostname.server_hostname(config)
+    self.serverHostname = server_hostname
     server_secured_url = 'https://' + self.serverHostname + \
                          ':' + config.get('server', 'secured_url_port')
     self.registerUrl = server_secured_url + '/agent/v1/register/' + self.hostname
@@ -96,9 +99,13 @@ class Controller(threading.Thread):
 
     self.cluster_configuration = ClusterConfiguration(cluster_config_cache_dir)
 
+    self.move_data_dir_mount_file()
+
+    self.alert_grace_period = int(config.get('agent', 'alert_grace_period', 5))
+
     self.alert_scheduler_handler = AlertSchedulerHandler(alerts_cache_dir, 
       stacks_cache_dir, common_services_cache_dir, host_scripts_cache_dir,
-      self.cluster_configuration, config)
+      self.alert_grace_period, self.cluster_configuration, config)
 
     self.alert_scheduler_handler.start()
 
@@ -403,7 +410,7 @@ class Controller(threading.Thread):
 
     try:
       if self.cachedconnect is None: # Lazy initialization
-        self.cachedconnect = security.CachedHTTPSConnection(self.config)
+        self.cachedconnect = security.CachedHTTPSConnection(self.config, self.serverHostname)
       req = urllib2.Request(url, data, {'Content-Type': 'application/json',
                                         'Accept-encoding': 'gzip'})
       response = self.cachedconnect.request(req)
@@ -434,6 +441,29 @@ class Controller(threading.Thread):
     logger.debug("LiveStatus.SERVICES" + str(LiveStatus.SERVICES))
     logger.debug("LiveStatus.CLIENT_COMPONENTS" + str(LiveStatus.CLIENT_COMPONENTS))
     logger.debug("LiveStatus.COMPONENTS" + str(LiveStatus.COMPONENTS))
+
+  def move_data_dir_mount_file(self):
+    """
+    In Ambari 2.1.2, we moved the dfs_data_dir_mount.hist to a static location
+    because /etc/hadoop/conf points to a symlink'ed location that would change during
+    Rolling Upgrade.
+    """
+    try:
+      if compare_versions(self.version, "2.1.2") >= 0:
+        source_file = "/etc/hadoop/conf/dfs_data_dir_mount.hist"
+        destination_file = "/var/lib/ambari-agent/data/datanode/dfs_data_dir_mount.hist"
+        if os.path.exists(source_file) and not os.path.exists(destination_file):
+          command = "mkdir -p %s" % os.path.dirname(destination_file)
+          logger.info("Moving Data Dir Mount History file. Executing command: %s" % command)
+          return_code = subprocess.call(command, shell=True)
+          logger.info("Return code: %d" % return_code)
+
+          command = "mv %s %s" % (source_file, destination_file)
+          logger.info("Moving Data Dir Mount History file. Executing command: %s" % command)
+          return_code = subprocess.call(command, shell=True)
+          logger.info("Return code: %d" % return_code)
+    except Exception, e:
+      logger.info("Exception in move_data_dir_mount_file(). Error: {0}".format(str(e)))
 
 def main(argv=None):
   # Allow Ctrl-C

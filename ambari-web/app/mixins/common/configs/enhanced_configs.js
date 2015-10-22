@@ -349,7 +349,6 @@ App.EnhancedConfigsMixin = Em.Mixin.create({
   dependenciesSuccess: function (data, opt, params) {
     this._saveRecommendedValues(data, params.initial, params.dataToSend.changed_configurations, params.selectedConfigGroup);
     this.set("recommendationsConfigs", Em.get(data.resources[0] , "recommendations.blueprint.configurations"));
-    this.set('configGroupsAreLoaded', true);
     if (!params.initial) {
       this.updateDependentConfigs();
     }
@@ -436,7 +435,7 @@ App.EnhancedConfigsMixin = Em.Mixin.create({
       this.set('_fileNamesToUpdate', fileNamesToUpdate);
     }
     var notDefaultGroup = !!selectedConfigGroup;
-    var parentPropertiesNames = parentConfigs ? parentConfigs.mapProperty('name') : [];
+    var parentPropertiesNames = parentConfigs ? parentConfigs.map(function(p) { return App.config.configId(Em.get(p, 'name'), Em.get(p, 'type'))}) : [];
     /** get all configs by config group **/
     for (var key in configObject) {
 
@@ -464,8 +463,6 @@ App.EnhancedConfigsMixin = Em.Mixin.create({
             initialValue = override ? override.get('savedValue') : cp && cp.get('savedValue');
           }
 
-
-          initialValue = Em.isNone(initialValue) ? value : initialValue;
           var recommendedValue = configObject[key].properties[propertyName];
 
           var isNewProperty = (!notDefaultGroup && Em.isNone(cp)) || (notDefaultGroup && group && Em.isNone(override));
@@ -473,7 +470,7 @@ App.EnhancedConfigsMixin = Em.Mixin.create({
           initialValue = validator.isValidFloat(initialValue) ? parseFloat(initialValue).toString() : initialValue;
           recommendedValue = validator.isValidFloat(recommendedValue) ? parseFloat(recommendedValue).toString() : recommendedValue;
 
-          if (!updateOnlyBoundaries && !parentPropertiesNames.contains(propertyName) && initialValue != recommendedValue) { //on first initial request we don't need to change values
+          if (!updateOnlyBoundaries && !parentPropertiesNames.contains(App.config.configId(propertyName, key)) && initialValue != recommendedValue) { //on first initial request we don't need to change values
             if (dependentProperty) {
               Em.set(dependentProperty, 'value', initialValue);
               Em.set(dependentProperty, 'recommendedValue', recommendedValue);

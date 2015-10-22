@@ -31,6 +31,7 @@
     <description>Enable HTTP</description>
     <value-attributes>
       <overridable>false</overridable>
+      <type>boolean</type>
     </value-attributes>
   </property>
 
@@ -96,6 +97,12 @@
     <value-attributes>
       <overridable>false</overridable>
     </value-attributes>
+    <depends-on>
+      <property>
+        <type>admin-properties</type>
+        <name>DB_FLAVOR</name>
+      </property>
+    </depends-on>
   </property>
 
   <property>
@@ -106,6 +113,20 @@
     <value-attributes>
       <overridable>false</overridable>
     </value-attributes>
+    <depends-on>
+      <property>
+        <type>admin-properties</type>
+        <name>DB_FLAVOR</name>
+      </property>
+      <property>
+        <type>admin-properties</type>
+        <name>db_host</name>
+      </property>
+      <property>
+        <type>admin-properties</type>
+        <name>db_name</name>
+      </property>
+    </depends-on>
   </property> 
 
   <property>
@@ -141,8 +162,8 @@
 
   <property>
     <name>ranger.audit.solr.urls</name>
-    <value>http://solr_host:6083/solr/ranger_audits</value>
-    <description>Solr url for audit</description>
+    <value></value>
+    <description>Solr url for audit. Example: http://solr_host:6083/solr/ranger_audits</description>
   </property>
 
   <property>
@@ -157,7 +178,8 @@
 
   <property>
     <name>ranger.ldap.url</name>
-    <value>ldap://71.127.43.33:389</value>
+    <display-name>​LDAP URL</display-name>
+    <value>{{ranger_ug_ldap_url}}</value>
     <description>LDAP Server URL, only used if Authentication method is LDAP</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -175,19 +197,22 @@
 
   <property>
     <name>ranger.ldap.group.searchbase</name>
-    <value>ou=groups,dc=xasecure,dc=net</value>
+    <display-name>Group Search Base</display-name>
+    <value>{{ranger_ug_ldap_group_searchbase}}</value>
     <description>LDAP group searchbase, only used if Authentication method is LDAP</description>
   </property>
 
   <property>
     <name>ranger.ldap.group.searchfilter</name>
-    <value>(member=uid={0},ou=users,dc=xasecure,dc=net)</value>
+    <display-name>Group Search Filter</display-name>
+    <value>{{ranger_ug_ldap_group_searchfilter}}</value>
     <description>LDAP group search filter, only used if Authentication method is LDAP</description>
   </property>
 
   <property>
     <name>ranger.ldap.user.searchfilter</name>
-    <value>(uid={0})</value>
+    <display-name>User Search Filter</display-name>
+    <value>{{ranger_ug_ldap_user_searchfilter}}</value>
     <description>Search filter used for Bind Authentication</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -214,7 +239,8 @@
 
   <property>
     <name>ranger.ldap.bind.dn</name>
-    <value>cn=adadmin,cn=Users,dc=example,dc=com</value>
+    <display-name>Bind User</display-name>
+    <value>{{ranger_ug_ldap_bind_dn}}</value>
     <description>Full distinguished name (DN), including common name (CN), of an LDAP user account that has privileges to search for users. </description>
     <value-attributes>
       <overridable>false</overridable>
@@ -223,7 +249,8 @@
 
   <property>
     <name>ranger.ldap.bind.password</name>
-    <value></value>
+    <display-name>​Bind User Password</display-name>
+    <value>{{ranger_usersync_ldap_ldapbindpassword}}</value>
     <property-type>PASSWORD</property-type>
     <description>Password for the account that can search for users</description>
     <value-attributes>
@@ -242,7 +269,8 @@
 
   <property>
     <name>ranger.ldap.ad.domain</name>
-    <value>localhost</value>
+    <display-name>Domain Name (AD specific)</display-name>
+    <value></value>
     <description>AD domain, only used if Authentication method is AD</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -251,7 +279,7 @@
 
   <property>
     <name>ranger.ldap.ad.url</name>
-    <value>ldap://ad.xasecure.net:389</value>
+    <value>{{ranger_ug_ldap_url}}</value>
     <description>AD URL, only used if Authentication method is AD</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -269,7 +297,7 @@
 
   <property>
     <name>ranger.ldap.ad.bind.dn</name>
-    <value>cn=adadmin,cn=Users,dc=example,dc=com</value>
+    <value>{{ranger_ug_ldap_bind_dn}}</value>
     <description>Full distinguished name (DN), including common name (CN), of an LDAP user account that has privileges to search for users.</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -278,7 +306,7 @@
 
   <property>
     <name>ranger.ldap.ad.bind.password</name>
-    <value></value>
+    <value>{{ranger_usersync_ldap_ldapbindpassword}}</value>
     <property-type>PASSWORD</property-type>
     <description>Password for the account that can search for users</description>
     <value-attributes>
@@ -288,7 +316,7 @@
 
   <property>
     <name>ranger.ldap.ad.user.searchfilter</name>
-    <value>(sAMAccountName={0})</value>
+    <value>{{ranger_ug_ldap_user_searchfilter}}</value>
     <description>Search filter used for Bind Authentication</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -341,13 +369,26 @@
     <display-name>Allow remote Login</display-name>
     <description>Remote login enabled? - only used if Authentication method is UNIX</description>
     <value-attributes>
+      <empty-value-valid>true</empty-value-valid>
+      <type>value-list</type>
       <overridable>false</overridable>
+      <entries>
+        <entry>
+          <value>true</value>
+          <label>Yes</label>
+        </entry>
+        <entry>
+          <value>false</value>
+          <label>No</label>
+        </entry>
+      </entries>
+      <selection-cardinality>1</selection-cardinality>
     </value-attributes>
   </property>
 
   <property>
     <name>ranger.unixauth.service.hostname</name>
-    <value>localhost</value>
+    <value>{{ugsync_host}}</value>
     <description>Host where unix authentication service is running - only used if Authentication method is UNIX</description>
     <value-attributes>
       <overridable>false</overridable>
@@ -359,6 +400,7 @@
     <value>5151</value>
     <description>Port for unix authentication service - only used if Authentication method is UNIX</description>
     <value-attributes>
+      <type>int</type>
       <overridable>false</overridable>
     </value-attributes>
   </property>    
@@ -377,8 +419,14 @@
 
   <property>
     <name>ranger.audit.solr.zookeepers</name>
-    <value>NONE</value>
+    <value>localhost:2181</value>
     <description>Solr Zookeeper string</description>
+    <depends-on>
+      <property>
+        <type>zoo.cfg</type>
+        <name>clientPort</name>
+      </property>
+    </depends-on>
   </property> 
 
   <property>

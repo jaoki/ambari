@@ -232,7 +232,7 @@ module.exports = {
         "isOverridable":false,
         "showLabel":true,
         "serviceName":"STORM",
-        "displayType":"masterHosts",
+        "displayType":"componentHosts",
         "isVisible":true,
         "description":"desc",
         "isSecureConfig":false,
@@ -248,7 +248,7 @@ module.exports = {
         "isOverridable":true,
         "showLabel":true,
         "serviceName":"STORM",
-        "displayType":"advanced",
+        "displayType":"string",
         "displayName":"single_line_property",
         "category":"AdvancedStormSite"
       },

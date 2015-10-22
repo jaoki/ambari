@@ -131,28 +131,25 @@ class FileProvider(Provider):
 class DirectoryProvider(Provider):
   def action_create(self):
     path = self.resource.path
-    
+
     if not sudo.path_exists(path):
-      Logger.info("Creating directory %s" % self.resource)
+      Logger.info("Creating directory %s since it doesn't exist." % self.resource)
       
       # dead links should be followed, else we gonna have failures on trying to create directories on top of them.
       if self.resource.follow:
-        followed_links = []
+        # Follow symlink until the tail.
+        followed_links = set()
         while sudo.path_lexists(path):
           if path in followed_links:
             raise Fail("Applying %s failed, looped symbolic links found while resolving %s" % (self.resource, path))
-          followed_links.append(path)
+          followed_links.add(path)
           path = sudo.readlink(path)
           
         if path != self.resource.path:
           Logger.info("Following the link {0} to {1} to create the directory".format(self.resource.path, path))
-      
+
       if self.resource.recursive:
-        if self.resource.recursive_permission:
-          DirectoryProvider.makedirs_and_set_permission_recursively(path, self.resource.owner,
-                                                                    self.resource.group, self.resource.mode)
-        else:
-          sudo.makedirs(path, self.resource.mode or 0755)
+        sudo.makedirs(path, self.resource.mode or 0755)
       else:
         dirname = os.path.dirname(path)
         if not sudo.path_isdir(dirname):
@@ -165,23 +162,6 @@ class DirectoryProvider(Provider):
     
     _ensure_metadata(path, self.resource.owner, self.resource.group,
                         mode=self.resource.mode, cd_access=self.resource.cd_access)
-
-  @staticmethod
-  def makedirs_and_set_permission_recursively(path, owner, group, mode):
-    folders=[]
-    path,folder=os.path.split(path)
-    while folder!="":
-      folders.append(folder)
-      path,folder=os.path.split(path)
-    if path!="":
-      folders.append(path)
-    folders.reverse()
-    dir_prefix=""
-    for folder in folders:
-      dir_prefix=os.path.join(dir_prefix, folder)
-      if not sudo.path_exists(dir_prefix):
-        sudo.makedir(dir_prefix, mode or 0755)
-        _ensure_metadata(dir_prefix, None, None, mode)
 
   def action_delete(self):
     path = self.resource.path

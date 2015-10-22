@@ -37,6 +37,7 @@
 
   <property>
     <name>knox_user</name>
+    <display-name>Knox User</display-name>
     <value>knox</value>
     <property-type>USER</property-type>
     <description>Knox Username.</description>
@@ -44,6 +45,7 @@
 
   <property>
     <name>knox_group</name>
+    <display-name>Knox Group</display-name>
     <value>knox</value>
     <property-type>GROUP</property-type>
     <description>Knox Group.</description>
@@ -55,6 +57,7 @@
     <display-name>Knox PID dir</display-name>
     <description>Knox PID dir.</description>
     <value-attributes>
+      <type>directory</type>
       <editable-only-at-install>true</editable-only-at-install>
       <overridable>false</overridable>
     </value-attributes>

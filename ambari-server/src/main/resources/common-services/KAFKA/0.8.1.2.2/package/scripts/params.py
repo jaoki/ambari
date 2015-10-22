@@ -43,6 +43,10 @@ hdp_stack_version = format_hdp_stack_version(stack_version_unformatted)
 kafka_home = '/usr/lib/kafka/'
 kafka_bin = kafka_home+'/bin/kafka'
 conf_dir = "/etc/kafka/conf"
+limits_conf_dir = "/etc/security/limits.d"
+
+kafka_user_nofile_limit = config['configurations']['kafka-env']['kafka_user_nofile_limit']
+kafka_user_nproc_limit = config['configurations']['kafka-env']['kafka_user_nproc_limit']
 
 # parameters for 2.2+
 if Script.is_hdp_stack_greater_or_equal("2.2"):
@@ -81,12 +85,8 @@ if 'ganglia_server_host' in config['clusterHostInfo'] and \
 else:
   ganglia_installed = False
 
-kafka_metrics_reporters=""
 metric_collector_host = ""
 metric_collector_port = ""
-
-if ganglia_installed:
-  kafka_metrics_reporters = "kafka.ganglia.KafkaGangliaMetricsReporter"
 
 ams_collector_hosts = default("/clusterHostInfo/metrics_collector_hosts", [])
 has_metric_collector = not len(ams_collector_hosts) == 0
@@ -96,12 +96,6 @@ if has_metric_collector:
   metric_collector_port = default("/configurations/ams-site/timeline.metrics.service.webapp.address", "0.0.0.0:6188")
   if metric_collector_port and metric_collector_port.find(':') != -1:
     metric_collector_port = metric_collector_port.split(':')[1]
-
-  if not len(kafka_metrics_reporters) == 0:
-      kafka_metrics_reporters = kafka_metrics_reporters + ','
-
-  kafka_metrics_reporters = kafka_metrics_reporters + "org.apache.hadoop.metrics2.sink.kafka.KafkaTimelineMetricsReporter"
-
 
 # Security-related params
 security_enabled = config['configurations']['cluster-env']['security_enabled']

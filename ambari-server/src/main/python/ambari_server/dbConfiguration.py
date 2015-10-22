@@ -27,7 +27,8 @@ from ambari_commons.os_family_impl import OsFamilyImpl
 from ambari_commons.str_utils import cbool
 from ambari_server.serverConfiguration import decrypt_password_for_alias, get_ambari_properties, get_is_secure, \
   get_resources_location, get_value_from_properties, is_alias_string, \
-  JDBC_PASSWORD_PROPERTY, JDBC_RCA_PASSWORD_ALIAS, PRESS_ENTER_MSG, DEFAULT_DBMS_PROPERTY
+  JDBC_PASSWORD_PROPERTY, JDBC_RCA_PASSWORD_ALIAS, PRESS_ENTER_MSG, DEFAULT_DBMS_PROPERTY, JDBC_DATABASE_PROPERTY, \
+  PERSISTENCE_TYPE_PROPERTY
 from ambari_server.userInput import get_validated_string_input
 
 
@@ -42,7 +43,7 @@ PASSWORD_PATTERN = "^[a-zA-Z0-9_-]*$"
 DATABASE_NAMES = ["postgres", "oracle", "mysql", "mssql", "sqlanywhere"]
 DATABASE_FULL_NAMES = {"oracle": "Oracle", "mysql": "MySQL", "mssql": "Microsoft SQL Server", "postgres":
   "PostgreSQL", "sqlanywhere": "SQL Anywhere"}
-
+LINUX_DBMS_KEYS_LIST = [ 'embedded', 'oracle', 'mysql', 'postgres', 'mssql', 'sqlanywhere']
 AMBARI_DATABASE_NAME = "ambari"
 AMBARI_DATABASE_TITLE = "ambari"
 
@@ -328,14 +329,7 @@ class DBMSConfigFactoryLinux(DBMSConfigFactory):
     from ambari_server.dbConfiguration_linux import createPGConfig, createOracleConfig, createMySQLConfig, \
       createMSSQLConfig, createSQLAConfig
 
-    self.DBMS_KEYS_LIST = [
-      'embedded',
-      'oracle',
-      'mysql',
-      'postgres',
-      'mssql',
-      'sqlanywhere'
-    ]
+    self.DBMS_KEYS_LIST = LINUX_DBMS_KEYS_LIST
 
     self.DRIVER_KEYS_LIST = [
       'oracle',
@@ -389,7 +383,14 @@ class DBMSConfigFactoryLinux(DBMSConfigFactory):
     try:
       dbms_index = options.database_index
     except AttributeError:
-      dbms_index = self._get_default_dbms_index(options)
+      db_name = get_value_from_properties(get_ambari_properties(), JDBC_DATABASE_PROPERTY, "").strip().lower()
+      persistence_type = get_value_from_properties(get_ambari_properties(), PERSISTENCE_TYPE_PROPERTY, "").strip().lower()
+      if persistence_type == STORAGE_TYPE_LOCAL:
+        dbms_index = self.DBMS_KEYS_LIST.index("embedded")
+      elif db_name:
+        dbms_index = self.DBMS_KEYS_LIST.index(db_name)
+      else:
+        dbms_index = self._get_default_dbms_index(options)
 
     if options.must_set_database_options:
       n_dbms = 1

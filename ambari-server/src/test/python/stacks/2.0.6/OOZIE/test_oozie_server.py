@@ -1179,7 +1179,7 @@ class TestOozieServer(RMFTestCase):
       ('tar', '-zcvhf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '/usr/hdp/current/oozie-server/conf/'),
       sudo = True)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'oozie-server', u'2.2.1.0-2135'),
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'oozie-server', u'2.2.1.0-2135'),
       sudo = True )
 
     self.assertResourceCalled('Execute',
@@ -1247,7 +1247,7 @@ class TestOozieServer(RMFTestCase):
       ('tar', '-zcvhf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '/usr/hdp/current/oozie-server/conf/'),
       sudo = True)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'oozie-server', '2.3.0.0-1234'), sudo = True)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'oozie-server', '2.3.0.0-1234'), sudo = True)
 
     self.assertResourceCalled('Execute',
       ('tar', '-xvf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '-C', '/usr/hdp/current/oozie-server/conf//'),
@@ -1267,11 +1267,11 @@ class TestOozieServer(RMFTestCase):
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
 
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
 
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
 
 
@@ -1305,7 +1305,7 @@ class TestOozieServer(RMFTestCase):
       ('tar', '-zcvhf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '/usr/hdp/current/oozie-server/conf/'),
       sudo = True)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'oozie-server', u'2.2.0.0-0000'), sudo = True)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'oozie-server', u'2.2.0.0-0000'), sudo = True)
 
     self.assertResourceCalled('Execute',
       ('tar', '-xvf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '-C', '/usr/hdp/current/oozie-server/conf//'),
@@ -1505,7 +1505,7 @@ class TestOozieServer(RMFTestCase):
       ('tar', '-zcvhf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '/usr/hdp/current/oozie-server/conf/'),
       sudo = True)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'oozie-server', '2.3.0.0-1234'), sudo = True)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'oozie-server', '2.3.0.0-1234'), sudo = True)
 
     self.assertResourceCalled('Execute',
       ('tar', '-xvf', '/tmp/oozie-upgrade-backup/oozie-conf-backup.tar', '-C', '/usr/hdp/current/oozie-server/conf//'),
@@ -1529,9 +1529,9 @@ class TestOozieServer(RMFTestCase):
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
 
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
 
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'oozie', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])

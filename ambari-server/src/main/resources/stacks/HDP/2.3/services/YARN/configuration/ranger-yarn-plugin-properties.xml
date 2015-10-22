@@ -49,7 +49,14 @@
     <value>No</value>
     <display-name>Enable Ranger for YARN</display-name>
     <description>Enable ranger yarn plugin ?</description>
+    <depends-on>
+      <property>
+        <type>ranger-env</type>
+        <name>ranger-yarn-plugin-enabled</name>
+      </property>
+    </depends-on>
     <value-attributes>
+      <type>boolean</type>
       <overridable>false</overridable>
     </value-attributes>
   </property>

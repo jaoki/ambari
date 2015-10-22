@@ -48,7 +48,7 @@ class TestWebHCatServer(RMFTestCase):
     )
 
     self.assert_configure_default()
-    self.assertResourceCalled('Execute', 'cd /var/run/webhcat ; /usr/lib/hcatalog/sbin/webhcat_server.sh start',
+    self.assertResourceCalled('Execute', 'cd /var/run/webhcat ; /usr/lib/hive-hcatalog/sbin/webhcat_server.sh start',
         environment = {'HADOOP_HOME': '/usr'},
         not_if = "ambari-sudo.sh su hcat -l -s /bin/bash -c '[RMF_EXPORT_PLACEHOLDER]ls /var/run/webhcat/webhcat.pid >/dev/null 2>&1 && ps -p `cat /var/run/webhcat/webhcat.pid` >/dev/null 2>&1'",
         user = 'hcat',
@@ -64,7 +64,7 @@ class TestWebHCatServer(RMFTestCase):
                        target = RMFTestCase.TARGET_COMMON_SERVICES
     )
 
-    self.assertResourceCalled('Execute', '/usr/lib/hcatalog/sbin/webhcat_server.sh stop',
+    self.assertResourceCalled('Execute', '/usr/lib/hive-hcatalog/sbin/webhcat_server.sh stop',
                               user = 'hcat',
                               environment = {'HADOOP_HOME': '/usr' }
                               )
@@ -105,7 +105,7 @@ class TestWebHCatServer(RMFTestCase):
     )
 
     self.assert_configure_secured()
-    self.assertResourceCalled('Execute', 'cd /var/run/webhcat ; /usr/lib/hcatalog/sbin/webhcat_server.sh start',
+    self.assertResourceCalled('Execute', 'cd /var/run/webhcat ; /usr/lib/hive-hcatalog/sbin/webhcat_server.sh start',
         environment = {'HADOOP_HOME': '/usr'},
         not_if = "ambari-sudo.sh su hcat -l -s /bin/bash -c '[RMF_EXPORT_PLACEHOLDER]ls /var/run/webhcat/webhcat.pid >/dev/null 2>&1 && ps -p `cat /var/run/webhcat/webhcat.pid` >/dev/null 2>&1'",
         user = 'hcat',
@@ -121,7 +121,7 @@ class TestWebHCatServer(RMFTestCase):
                        target = RMFTestCase.TARGET_COMMON_SERVICES
     )
 
-    self.assertResourceCalled('Execute', '/usr/lib/hcatalog/sbin/webhcat_server.sh stop',
+    self.assertResourceCalled('Execute', '/usr/lib/hive-hcatalog/sbin/webhcat_server.sh stop',
                               user = 'hcat',
                               environment = {'HADOOP_HOME': '/usr' }
                               )
@@ -152,7 +152,7 @@ class TestWebHCatServer(RMFTestCase):
                               recursive = True,
                               mode = 0755,
                               )
-    self.assertResourceCalled('Directory', '/etc/hcatalog/conf',
+    self.assertResourceCalled('Directory', '/etc/hive-webhcat/conf',
                               owner = 'hcat',
                               group = 'hadoop',
                               recursive = True,
@@ -161,11 +161,11 @@ class TestWebHCatServer(RMFTestCase):
     self.assertResourceCalled('XmlConfig', 'webhcat-site.xml',
                               owner = 'hcat',
                               group = 'hadoop',
-                              conf_dir = '/etc/hcatalog/conf',
+                              conf_dir = '/etc/hive-webhcat/conf',
                               configurations = self.getConfig()['configurations']['webhcat-site'],
                               configuration_attributes = self.getConfig()['configuration_attributes']['webhcat-site']
     )
-    self.assertResourceCalled('File', '/etc/hcatalog/conf/webhcat-env.sh',
+    self.assertResourceCalled('File', '/etc/hive-webhcat/conf/webhcat-env.sh',
                               content = InlineTemplate(self.getConfig()['configurations']['webhcat-env']['content']),
                               owner = 'hcat',
                               group = 'hadoop',
@@ -174,7 +174,7 @@ class TestWebHCatServer(RMFTestCase):
         cd_access = 'a',
         recursive=True
     )
-    self.assertResourceCalled('File', '/etc/hcatalog/conf/webhcat-log4j.properties',
+    self.assertResourceCalled('File', '/etc/hive-webhcat/conf/webhcat-log4j.properties',
                               content = 'log4jproperties\nline2',
                               owner = 'hcat',
                               group = 'hadoop',
@@ -194,7 +194,7 @@ class TestWebHCatServer(RMFTestCase):
                               recursive = True,
                               mode = 0755,
                               )
-    self.assertResourceCalled('Directory', '/etc/hcatalog/conf',
+    self.assertResourceCalled('Directory', '/etc/hive-webhcat/conf',
                               owner = 'hcat',
                               group = 'hadoop',
                               recursive = True,
@@ -207,11 +207,11 @@ class TestWebHCatServer(RMFTestCase):
     self.assertResourceCalled('XmlConfig', 'webhcat-site.xml',
                               owner = 'hcat',
                               group = 'hadoop',
-                              conf_dir = '/etc/hcatalog/conf',
+                              conf_dir = '/etc/hive-webhcat/conf',
                               configurations = self.getConfig()['configurations']['webhcat-site'],
                               configuration_attributes = self.getConfig()['configuration_attributes']['webhcat-site']
     )
-    self.assertResourceCalled('File', '/etc/hcatalog/conf/webhcat-env.sh',
+    self.assertResourceCalled('File', '/etc/hive-webhcat/conf/webhcat-env.sh',
                               content = InlineTemplate(self.getConfig()['configurations']['webhcat-env']['content']),
                               owner = 'hcat',
                               group = 'hadoop',
@@ -220,7 +220,7 @@ class TestWebHCatServer(RMFTestCase):
         cd_access = 'a',
         recursive=True
     )
-    self.assertResourceCalled('File', '/etc/hcatalog/conf/webhcat-log4j.properties',
+    self.assertResourceCalled('File', '/etc/hive-webhcat/conf/webhcat-log4j.properties',
                               content = 'log4jproperties\nline2',
                               owner = 'hcat',
                               group = 'hadoop',
@@ -356,7 +356,7 @@ class TestWebHCatServer(RMFTestCase):
                        hdp_stack_version = self.STACK_VERSION,
                        target = RMFTestCase.TARGET_COMMON_SERVICES)
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'hive-webhcat', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hive-webhcat', version), sudo=True,)
     self.assertNoMoreResources()
 
   @patch("resource_management.core.shell.call")
@@ -385,22 +385,22 @@ class TestWebHCatServer(RMFTestCase):
     self.assertTrue("/usr/hdp/current/hive-webhcat/etc/webhcat" == sys.modules["params"].webhcat_conf_dir)
 
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'hive-webhcat', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hive-webhcat', version), sudo=True,)
     self.assertNoMoreResources()
 
     self.assertEquals(2, mocks_dict['call'].call_count)
     self.assertEquals(2, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hive-hcatalog', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hive-hcatalog', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hive-hcatalog', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hive-hcatalog', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[1][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[1][0][0])
 
   @patch("resource_management.core.shell.call")
@@ -451,17 +451,24 @@ class TestWebHCatServer(RMFTestCase):
       configuration_attributes = self.getConfig()['configuration_attributes']['webhcat-site'])
 
     self.assertResourceCalled('XmlConfig', 'hive-site.xml',
-      owner = 'hive',
-      conf_dir = '/usr/hdp/2.3.0.0-1234/hive/conf',
-      configurations = self.getConfig()['configurations']['hive-site'],
-      configuration_attributes = self.getConfig()['configuration_attributes']['hive-site'])
-      
+        owner = 'hive',
+        group = 'hadoop',
+        conf_dir = '/usr/hdp/2.3.0.0-1234/hive/conf',
+        configuration_attributes = {u'final': {u'hive.optimize.bucketmapjoin.sortedmerge': u'true',
+                      u'javax.jdo.option.ConnectionDriverName': u'true',
+                      u'javax.jdo.option.ConnectionPassword': u'true'}},
+        configurations = self.getConfig()['configurations']['hive-site'],
+    )
     self.assertResourceCalled('XmlConfig', 'yarn-site.xml',
-      owner = 'yarn',
-      conf_dir = '/usr/hdp/2.3.0.0-1234/hadoop/conf',
-      configurations = self.getConfig()['configurations']['yarn-site'],
-      configuration_attributes = self.getConfig()['configuration_attributes']['yarn-site'])
-
+        owner = 'yarn',
+        group = 'hadoop',
+        conf_dir = '/usr/hdp/2.3.0.0-1234/hadoop/conf',
+        configuration_attributes = {u'final': {u'yarn.nodemanager.container-executor.class': u'true',
+                      u'yarn.nodemanager.disk-health-checker.min-healthy-disks': u'true',
+                      u'yarn.nodemanager.local-dirs': u'true'}},
+        configurations = self.getConfig()['configurations']['yarn-site'],
+    )
+    
     self.assertResourceCalled('File', '/usr/hdp/current/hive-webhcat/etc/webhcat/webhcat-env.sh',
       content = InlineTemplate(self.getConfig()['configurations']['webhcat-env']['content']),
       owner = 'hcat',

@@ -341,6 +341,20 @@ public abstract class AbstractUpgradeCatalog implements UpgradeCatalog {
   }
 
   /**
+   * This method returns Map of clusters.
+   * Map can be empty or with some objects, but never be null.
+   */
+  protected Map<String, Cluster> getCheckedClusterMap(Clusters clusters) {
+    if (clusters != null) {
+      Map<String, Cluster> clusterMap = clusters.getClusters();
+      if (clusterMap != null) {
+        return clusterMap;
+      }
+    }
+    return new HashMap<>();
+  }
+
+  /**
    * Create a new cluster scoped configuration with the new properties added
    * with the values from the coresponding xml files.
    *
@@ -466,6 +480,19 @@ public abstract class AbstractUpgradeCatalog implements UpgradeCatalog {
   protected void updateConfigurationPropertiesForCluster(Cluster cluster, String configType,
         Map<String, String> properties, boolean updateIfExists, boolean createNewConfigType) throws AmbariException {
     updateConfigurationPropertiesForCluster(cluster, configType, properties, null, updateIfExists, createNewConfigType);
+  }
+
+  /**
+   * Remove properties from the cluster
+   * @param cluster cluster object
+   * @param configType config to be updated
+   * @param removePropertiesList properties to be removed. Could be <code>null</code>
+   * @throws AmbariException
+   */
+  protected void removeConfigurationPropertiesFromCluster(Cluster cluster, String configType, Set<String> removePropertiesList)
+      throws AmbariException {
+
+    updateConfigurationPropertiesForCluster(cluster, configType, new HashMap<String, String>(), removePropertiesList, false, true);
   }
 
   /**

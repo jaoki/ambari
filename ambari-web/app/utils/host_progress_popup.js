@@ -18,7 +18,7 @@
 
 var App = require('app');
 var batchUtils = require('utils/batch_scheduled_requests');
-var date = require('utils/date');
+var date = require('utils/date/date');
 
 /**
  * App.HostPopup is for the popup that shows up upon clicking already-performed or currently-in-progress operations
@@ -692,9 +692,8 @@ App.HostPopup = Em.Object.create({
        */
       updateNotShowBgChecked: function () {
         var curVal = !this.get('isNotShowBgChecked');
-        var key = App.router.get('applicationController').persistKey();
         if (!App.get('testMode')) {
-          App.router.get('applicationController').postUserPref(key, curVal);
+          App.router.get('userSettingsController').postUserPref('show_bg', curVal);
         }
       }.observes('isNotShowBgChecked'),
 

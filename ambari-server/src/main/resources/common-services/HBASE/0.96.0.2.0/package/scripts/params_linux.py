@@ -20,9 +20,10 @@ limitations under the License.
 import status_params
 import ambari_simplejson as json # simplejson is much faster comparing to Python 2.6 json module and has the same functions set.
 
-from functions import calc_xmn_from_xms
+from functions import calc_xmn_from_xms, ensure_unit_for_memory
 
 from ambari_commons.constants import AMBARI_SUDO_BINARY
+from ambari_commons.os_check import OSCheck
 
 from resource_management.libraries.resources.hdfs_resource import HdfsResource
 from resource_management.libraries.functions import conf_select
@@ -75,6 +76,10 @@ if Script.is_hdp_stack_greater_or_equal("2.2"):
 
 
 hbase_conf_dir = status_params.hbase_conf_dir
+limits_conf_dir = status_params.limits_conf_dir
+
+hbase_user_nofile_limit = default("/configurations/hbase-env/hbase_user_nofile_limit", "32000")
+hbase_user_nproc_limit = default("/configurations/hbase-env/hbase_user_nproc_limit", "16000")
 
 # no symlink for phoenix-server at this point
 phx_daemon_script = '/usr/hdp/current/phoenix-server/bin/queryserver.py'
@@ -97,9 +102,9 @@ java64_home = config['hostLevelParams']['java_home']
 java_version = int(config['hostLevelParams']['java_version'])
 
 log_dir = config['configurations']['hbase-env']['hbase_log_dir']
-master_heapsize = config['configurations']['hbase-env']['hbase_master_heapsize']
+master_heapsize = ensure_unit_for_memory(config['configurations']['hbase-env']['hbase_master_heapsize'])
 
-regionserver_heapsize = config['configurations']['hbase-env']['hbase_regionserver_heapsize']
+regionserver_heapsize = ensure_unit_for_memory(config['configurations']['hbase-env']['hbase_regionserver_heapsize'])
 regionserver_xmn_max = config['configurations']['hbase-env']['hbase_regionserver_xmn_max']
 regionserver_xmn_percent = config['configurations']['hbase-env']['hbase_regionserver_xmn_ratio']
 regionserver_xmn_size = calc_xmn_from_xms(regionserver_heapsize, regionserver_xmn_percent, regionserver_xmn_max)
@@ -113,6 +118,13 @@ if not has_phoenix and not phoenix_enabled:
   exclude_packages = ['phoenix*']
 else:
   exclude_packages = []
+
+underscored_version = stack_version_unformatted.replace('.', '_')
+dashed_version = stack_version_unformatted.replace('.', '-')
+if OSCheck.is_redhat_family() or OSCheck.is_suse_family():
+  phoenix_package = format("phoenix_{underscored_version}_*")
+elif OSCheck.is_ubuntu_family():
+  phoenix_package = format("phoenix-{dashed_version}-.*")
 
 pid_dir = status_params.pid_dir
 tmp_dir = config['configurations']['hbase-site']['hbase.tmp.dir']

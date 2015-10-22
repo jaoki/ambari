@@ -496,7 +496,7 @@ class TestHiveMetastore(RMFTestCase):
                        hdp_stack_version = self.STACK_VERSION,
                        target = RMFTestCase.TARGET_COMMON_SERVICES)
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'hive-metastore', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hive-metastore', version), sudo=True,)
     self.assertNoMoreResources()
 
   @patch("resource_management.core.shell.call")
@@ -518,16 +518,16 @@ class TestHiveMetastore(RMFTestCase):
                        mocks_dict = mocks_dict)
 
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'hive-metastore', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hive-metastore', version), sudo=True,)
     self.assertNoMoreResources()
 
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hive', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hive', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hive', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hive', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
 
 
@@ -539,7 +539,7 @@ class TestHiveMetastore(RMFTestCase):
     get_hdp_version_mock.return_value = '2.3.0.0-1234'
 
     def side_effect(path):
-      if path == "/usr/hdp/current/hive-server2/lib/mysql-connector-java.jar":
+      if path == "/usr/hdp/2.2.7.0-1234/hive-server2/lib/mysql-connector-java.jar":
         return True
       return False
 
@@ -554,6 +554,8 @@ class TestHiveMetastore(RMFTestCase):
     version = '2.3.0.0-1234'
     json_content['commandParams']['version'] = version
     json_content['hostLevelParams']['stack_version'] = "2.3"
+    json_content['hostLevelParams']['current_version'] = "2.2.7.0-1234"
+
 
     # trigger the code to think it needs to copy the JAR
     json_content['configurations']['hive-site']['javax.jdo.option.ConnectionDriverName'] = "com.mysql.jdbc.Driver"
@@ -570,7 +572,7 @@ class TestHiveMetastore(RMFTestCase):
       mocks_dict = mocks_dict)
 
     self.assertResourceCalled('Execute',
-      ('cp', '/usr/hdp/current/hive-server2/lib/mysql-connector-java.jar', '/usr/hdp/2.3.0.0-1234/hive/lib'),
+      ('cp', '/usr/hdp/2.2.7.0-1234/hive-server2/lib/mysql-connector-java.jar', '/usr/hdp/2.3.0.0-1234/hive/lib'),
       path = ['/bin', '/usr/bin/'], sudo = True)
 
     self.assertResourceCalled('File', '/usr/hdp/2.3.0.0-1234/hive/lib/mysql-connector-java.jar',
@@ -578,10 +580,10 @@ class TestHiveMetastore(RMFTestCase):
     )
 
     self.assertResourceCalled('Execute', "/usr/hdp/2.3.0.0-1234/hive/bin/schematool -dbType mysql -upgradeSchema",
-     logoutput = True, environment = {'HIVE_CONF_DIR': '/usr/hdp/current/hive-server2/conf/conf.server'},
+     logoutput = True, environment = {'HIVE_CONF_DIR': '/etc/hive/conf.server'},
       tries = 1, user = 'hive')
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hive-metastore', version), sudo=True,)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hive-metastore', version), sudo=True,)
 
     self.assertNoMoreResources()
 
@@ -607,7 +609,7 @@ class TestHiveMetastore(RMFTestCase):
     # trigger the code to think it needs to copy the JAR
     json_content['configurations']['hive-site']['javax.jdo.option.ConnectionDriverName'] = "sap.jdbc4.sqlanywhere.IDriver"
     json_content['configurations']['hive-env']['hive_database'] = "Existing"
-    json_content['configurations']['hive-env']['hive_database_type'] = "sqla"
+    json_content['configurations']['hive-env']['hive_database_type'] = "sqlanywhere"
 
     mocks_dict = {}
     self.executeScript(self.COMMON_SERVICES_PACKAGE_DIR + "/scripts/hive_metastore.py",
@@ -667,10 +669,10 @@ class TestHiveMetastore(RMFTestCase):
                               mode = 0644,
                               )
 
-    self.assertResourceCalled('Execute', "/usr/hdp/2.3.0.0-1234/hive/bin/schematool -dbType sqla -upgradeSchema",
+    self.assertResourceCalled('Execute', "/usr/hdp/2.3.0.0-1234/hive/bin/schematool -dbType sqlanywhere -upgradeSchema",
                               logoutput = True, environment = {'HIVE_CONF_DIR': '/usr/hdp/current/hive-server2/conf/conf.server'},
                               tries = 1, user = 'hive')
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hive-metastore', version), sudo=True,)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hive-metastore', version), sudo=True,)
 
     self.assertNoMoreResources()

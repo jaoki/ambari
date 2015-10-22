@@ -28,6 +28,7 @@ from ambari_commons.os_check import OSCheck
 from resource_management.libraries.resources.hdfs_resource import HdfsResource
 from resource_management.libraries.functions.default import default
 from resource_management.libraries.functions.format import format
+from resource_management.libraries.functions.is_empty import is_empty
 from resource_management.libraries.functions.version import format_hdp_stack_version
 from resource_management.libraries.functions.copy_tarball import STACK_VERSION_PATTERN
 from resource_management.libraries.functions import get_kinit_path
@@ -48,7 +49,7 @@ hostname = config["hostname"]
 # This is expected to be of the form #.#.#.#
 stack_version_unformatted = str(config['hostLevelParams']['stack_version'])
 hdp_stack_version_major = format_hdp_stack_version(stack_version_unformatted)
-stack_is_hdp21 = Script.is_hdp_stack_greater_or_equal("2.0") and Script.is_hdp_stack_less_than("2.2")
+stack_is_hdp21 = Script.is_hdp_stack_less_than("2.2")
 
 # this is not available on INSTALL action because hdp-select is not available
 hdp_stack_version = functions.get_hdp_version('hive-server2')
@@ -82,10 +83,6 @@ sqoop_tar_file = '/usr/share/HDP-webhcat/sqoop*.tar.gz'
 hive_specific_configs_supported = False
 hive_etc_dir_prefix = "/etc/hive"
 limits_conf_dir = "/etc/security/limits.d"
-hcat_conf_dir = '/etc/hcatalog/conf'
-config_dir = '/etc/hcatalog/conf'
-hcat_lib = '/usr/lib/hcatalog/share/hcatalog'
-webhcat_bin_dir = '/usr/lib/hcatalog/sbin'
 
 hive_user_nofile_limit = default("/configurations/hive-env/hive_user_nofile_limit", "32000")
 hive_user_nproc_limit = default("/configurations/hive-env/hive_user_nproc_limit", "16000")
@@ -100,11 +97,10 @@ hive_config_dir = status_params.hive_config_dir
 hive_client_conf_dir = status_params.hive_client_conf_dir
 hive_server_conf_dir = status_params.hive_server_conf_dir
 
-if Script.is_hdp_stack_greater_or_equal("2.1"):
-  hcat_conf_dir = '/etc/hive-hcatalog/conf'
-  config_dir = '/etc/hive-webhcat/conf'
-  hcat_lib = '/usr/lib/hive-hcatalog/share/hcatalog'
-  webhcat_bin_dir = '/usr/lib/hive-hcatalog/sbin'
+hcat_conf_dir = '/etc/hive-hcatalog/conf'
+config_dir = '/etc/hive-webhcat/conf'
+hcat_lib = '/usr/lib/hive-hcatalog/share/hcatalog'
+webhcat_bin_dir = '/usr/lib/hive-hcatalog/sbin'
 
 # Starting from HDP2.3 drop should be executed with purge suffix
 purge_tables = "false"
@@ -165,6 +161,7 @@ hive_metastore_user_name = config['configurations']['hive-site']['javax.jdo.opti
 hive_jdbc_connection_url = config['configurations']['hive-site']['javax.jdo.option.ConnectionURL']
 
 hive_metastore_user_passwd = config['configurations']['hive-site']['javax.jdo.option.ConnectionPassword']
+hive_metastore_user_passwd = unicode(hive_metastore_user_passwd) if not is_empty(hive_metastore_user_passwd) else hive_metastore_user_passwd
 hive_metastore_db_type = config['configurations']['hive-env']['hive_database_type']
 #HACK Temporarily use dbType=azuredb while invoking schematool
 if hive_metastore_db_type == "mssql":
@@ -203,11 +200,13 @@ prepackaged_ojdbc_symlink = format("{hive_lib}/ojdbc6.jar")
 templeton_port = config['configurations']['webhcat-site']['templeton.port']
 
 #constants for type2 jdbc
+jdbc_libs_dir = format("{hive_lib}/native/lib64")
+lib_dir_available = os.path.exists(jdbc_libs_dir)
+
 if sqla_db_used:
   jars_path_in_archive = format("{tmp_dir}/sqla-client-jdbc/java/*")
   libs_path_in_archive = format("{tmp_dir}/sqla-client-jdbc/native/lib64/*")
   downloaded_custom_connector = format("{tmp_dir}/sqla-client-jdbc.tar.gz")
-  jdbc_libs_dir = format("{hive_lib}/native/lib64")
   libs_in_hive_lib = format("{jdbc_libs_dir}/*")
 
 #common
@@ -311,10 +310,7 @@ mysql_adduser_path = format("{tmp_dir}/addMysqlUser.sh")
 mysql_deluser_path = format("{tmp_dir}/removeMysqlUser.sh")
 
 ######## Metastore Schema
-init_metastore_schema = False
-if Script.is_hdp_stack_greater_or_equal("2.1"):
-  init_metastore_schema = True
-
+init_metastore_schema = True
 
 ########## HCAT
 hcat_dbroot = hcat_lib
@@ -349,7 +345,7 @@ process_name = status_params.process_name
 hive_env_sh_template = config['configurations']['hive-env']['content']
 
 hive_hdfs_user_dir = format("/user/{hive_user}")
-hive_hdfs_user_mode = 0700
+hive_hdfs_user_mode = 0755
 hive_apps_whs_dir = config['configurations']['hive-site']["hive.metastore.warehouse.dir"]
 hive_exec_scratchdir = config['configurations']['hive-site']["hive.exec.scratchdir"]
 #for create_hdfs_directory

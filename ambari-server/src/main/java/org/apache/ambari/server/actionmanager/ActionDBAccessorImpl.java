@@ -27,9 +27,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.ambari.annotations.Experimental;
 import org.apache.ambari.server.AmbariException;
 import org.apache.ambari.server.agent.CommandReport;
 import org.apache.ambari.server.agent.ExecutionCommand;
+import org.apache.ambari.server.configuration.Configuration;
 import org.apache.ambari.server.orm.dao.ClusterDAO;
 import org.apache.ambari.server.orm.dao.ExecutionCommandDAO;
 import org.apache.ambari.server.orm.dao.HostDAO;
@@ -105,6 +107,9 @@ public class ActionDBAccessorImpl implements ActionDBAccessor {
   @Inject
   RequestScheduleDAO requestScheduleDAO;
 
+  @Inject
+  Configuration configuration;
+
   private Cache<Long, HostRoleCommand> hostRoleCommandCache;
   private long cacheLimit; //may be exceeded to store tasks from one request
 
@@ -138,24 +143,12 @@ public class ActionDBAccessorImpl implements ActionDBAccessor {
   @Override
   public List<Stage> getAllStages(long requestId) {
     List<StageEntity> stageEntities = stageDAO.findByRequestId(requestId);
-    ParallelLoopResult<Stage> loopResult = Parallel.forLoop(stageEntities, new LoopBody<StageEntity, Stage>() {
-      @Override
-      public Stage run(StageEntity stageEntity) {
-        return stageFactory.createExisting(stageEntity);
-      }
-    });
-    if(loopResult.getIsCompleted()) {
-      return loopResult.getResult();
-    } else {
-      // Fetch any missing results sequentially
-      List<Stage> stages = loopResult.getResult();
-      for(int i = 0; i < stages.size(); i++) {
-        if(stages.get(i) == null) {
-          stages.set(i, stageFactory.createExisting(stageEntities.get(i)));
-        }
-      }
-      return stages;
+    List<Stage> stages = new ArrayList<>(stageEntities.size());
+    for( StageEntity stageEntity : stageEntities ){
+      stages.add(stageFactory.createExisting(stageEntity));
     }
+
+    return stages;
   }
 
   @Override
@@ -223,23 +216,38 @@ public class ActionDBAccessorImpl implements ActionDBAccessor {
    * {@inheritDoc}
    */
   @Override
+  @Experimental
   public List<Stage> getStagesInProgress() {
-    List<StageEntity> stageEntities = stageDAO.findByCommandStatuses(HostRoleStatus.IN_PROGRESS_STATUSES);
-    ParallelLoopResult<Stage> loopResult = Parallel.forLoop(stageEntities, new LoopBody<StageEntity, Stage>() {
-      @Override
-      public Stage run(StageEntity stageEntity) {
-        return stageFactory.createExisting(stageEntity);
-      }
-    });
-    if(loopResult.getIsCompleted()) {
-      return loopResult.getResult();
-    } else {
-      // Fetch any missing results sequentially
-      List<Stage> stages = loopResult.getResult();
-      for(int i = 0; i < stages.size(); i++) {
-        if(stages.get(i) == null) {
-          stages.set(i, stageFactory.createExisting(stageEntities.get(i)));
+    List<StageEntity> stageEntities = stageDAO.findByCommandStatuses(
+        HostRoleStatus.IN_PROGRESS_STATUSES);
+
+    // experimentally enable parallel stage processing
+    @Experimental
+    boolean useConcurrentStageProcessing = configuration.isExperimentalConcurrentStageProcessingEnabled();
+    if (useConcurrentStageProcessing) {
+      ParallelLoopResult<Stage> loopResult = Parallel.forLoop(stageEntities,
+          new LoopBody<StageEntity, Stage>() {
+            @Override
+            public Stage run(StageEntity stageEntity) {
+              return stageFactory.createExisting(stageEntity);
+            }
+          });
+      if (loopResult.getIsCompleted()) {
+        return loopResult.getResult();
+      } else {
+        // Fetch any missing results sequentially
+        List<Stage> stages = loopResult.getResult();
+        for (int i = 0; i < stages.size(); i++) {
+          if (stages.get(i) == null) {
+            stages.set(i, stageFactory.createExisting(stageEntities.get(i)));
+          }
         }
+        return stages;
+      }
+    } else {
+      List<Stage> stages = new ArrayList<>(stageEntities.size());
+      for (StageEntity stageEntity : stageEntities) {
+        stages.add(stageFactory.createExisting(stageEntity));
       }
       return stages;
     }
@@ -701,26 +709,13 @@ public class ActionDBAccessorImpl implements ActionDBAccessor {
   }
 
   @Override
-  public List<Request> getRequests(Collection<Long> requestIds){
+  public List<Request> getRequests(Collection<Long> requestIds) {
     List<RequestEntity> requestEntities = requestDAO.findByPks(requestIds);
-    ParallelLoopResult<Request> loopResult = Parallel.forLoop(requestEntities, new LoopBody<RequestEntity, Request>() {
-      @Override
-      public Request run(RequestEntity requestEntity) {
-        return requestFactory.createExisting(requestEntity);
-      }
-    });
-    if(loopResult.getIsCompleted()) {
-      return loopResult.getResult();
-    } else {
-      // Fetch any missing results sequentially
-      List<Request> requests = loopResult.getResult();
-      for(int i = 0; i < requests.size(); i++) {
-        if(requests.get(i) == null) {
-          requests.set(i, requestFactory.createExisting(requestEntities.get(i)));
-        }
-      }
-      return requests;
+    List<Request> requests = new ArrayList<Request>(requestEntities.size());
+    for (RequestEntity requestEntity : requestEntities) {
+      requests.add(requestFactory.createExisting(requestEntity));
     }
+    return requests;
   }
 
   @Override

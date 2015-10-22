@@ -147,6 +147,8 @@ public abstract class AbstractControllerResourceProvider extends AbstractResourc
         return new HostComponentProcessResourceProvider(propertyIds, keyPropertyIds, managementController);
       case Blueprint:
         return new BlueprintResourceProvider(propertyIds, keyPropertyIds, managementController);
+      case KerberosDescriptor:
+        return resourceProviderFactory.getKerberosDescriptorResourceProvider(managementController, propertyIds, keyPropertyIds);
       case Recommendation:
         return new RecommendationResourceProvider(propertyIds, keyPropertyIds, managementController);
       case Validation:
@@ -169,6 +171,8 @@ public abstract class AbstractControllerResourceProvider extends AbstractResourc
         return new WidgetResourceProvider(managementController);
       case HostKerberosIdentity:
         return resourceProviderFactory.getHostKerberosIdentityResourceProvider(managementController);
+      case Credential:
+        return resourceProviderFactory.getCredentialResourceProvider(managementController);
 
       default:
         throw new IllegalArgumentException("Unknown type " + type);

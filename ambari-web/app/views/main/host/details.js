@@ -17,7 +17,7 @@
  */
 
 var App = require('app');
-var date = require('utils/date');
+var date = require('utils/date/date');
 
 App.MainHostDetailsView = Em.View.extend({
   templateName: require('templates/main/host/details'),
@@ -58,12 +58,13 @@ App.MainHostDetailsView = Em.View.extend({
   }.property('controller.content','isActive', 'controller.content.isNotHeartBeating'),
   didInsertElement: function() {
     var self = this;
+    var host = self.get('content');
 
-    this.set('isLoaded', App.Host.find(this.get('content.id')).get('isLoaded'));
+    this.set('isLoaded', App.Host.find(host.get('id')).get('isLoaded'));
     App.router.get('updateController').updateHost(function () {
       self.set('isLoaded', true);
       App.tooltip($("[rel='HealthTooltip']"));
-      if (!self.get('content.isLoaded')) {
+      if (!host.get('isLoaded')) {
         //if host is not existed then route to list of hosts
         App.router.transitionTo('main.hosts.index');
       }

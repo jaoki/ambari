@@ -28,6 +28,9 @@
       A comma-separated list of one or more directories in which Kafka data is stored.
       Each new partition that is created will be placed in the directory which currently has the fewest partitions.
     </description>
+    <value-attributes>
+      <type>directories</type>
+    </value-attributes>
   </property>
   <property>
     <name>port</name>
@@ -35,6 +38,9 @@
     <description>
       The port on which the server accepts client connections.
     </description>
+    <value-attributes>
+      <type>int</type>
+    </value-attributes>
   </property>
   <property>
     <name>zookeeper.connect</name>
@@ -244,7 +250,7 @@
   </property>
   <property>
     <name>zookeeper.connection.timeout.ms</name>
-    <value>15000</value>
+    <value>25000</value>
     <description>The maximum amount of time that the client waits to establish a connection to zookeeper.</description>
   </property>
   <property>
@@ -271,7 +277,7 @@
   </property>
   <property>
     <name>kafka.metrics.reporters</name>
-    <value>{{kafka_metrics_reporters}}</value>
+    <value>org.apache.hadoop.metrics2.sink.kafka.KafkaTimelineMetricsReporter</value>
     <description>
       kafka ganglia metrics reporter and kafka timeline metrics reporter
     </description>

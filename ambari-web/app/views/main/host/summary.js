@@ -18,7 +18,7 @@
 
 var App = require('app');
 
-App.MainHostSummaryView = Em.View.extend({
+App.MainHostSummaryView = Em.View.extend(App.TimeRangeMixin, {
 
   templateName: require('templates/main/host/summary'),
 
@@ -52,12 +52,6 @@ App.MainHostSummaryView = Em.View.extend({
   content: function () {
     return App.router.get('mainHostDetailsController.content');
   }.property('App.router.mainHostDetailsController.content'),
-
-  showGangliaCharts: function () {
-    var name = this.get('content.hostName');
-    var gangliaMobileUrl = App.router.get('clusterController.gangliaUrl') + "/mobile_helper.php?show_host_metrics=1&h=" + name + "&c=HDPSlaves&r=hour&cs=&ce=";
-    window.open(gangliaMobileUrl);
-  },
 
   /**
    * Host metrics panel not displayed when Metrics service (ex:Ganglia) is not in stack definition.
@@ -302,10 +296,7 @@ App.MainHostSummaryView = Em.View.extend({
    */
   timeSinceHeartBeat: function () {
     var d = this.get('content.lastHeartBeatTime');
-    if (d) {
-      return $.timeago(d);
-    }
-    return "";
+    return d ? $.timeago(d) : '';
   }.property('content.lastHeartBeatTime'),
 
   /**

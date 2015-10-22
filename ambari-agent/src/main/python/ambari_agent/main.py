@@ -46,6 +46,7 @@ import HeartbeatHandlers
 from HeartbeatHandlers import bind_signal_handlers
 from ambari_commons.constants import AMBARI_SUDO_BINARY
 logger = logging.getLogger()
+alerts_logger = logging.getLogger('ambari_alerts')
 
 formatstr = "%(levelname)s %(asctime)s %(filename)s:%(lineno)d - %(message)s"
 agentPid = os.getpid()
@@ -57,24 +58,20 @@ IS_LINUX = platform.system() == "Linux"
 SYSLOG_FORMAT_STRING = ' ambari_agent - %(filename)s - [%(process)d] - %(name)s - %(levelname)s - %(message)s'
 SYSLOG_FORMATTER = logging.Formatter(SYSLOG_FORMAT_STRING)
 
-
-def setup_logging(verbose):
+def setup_logging(logger, filename, verbose):
   formatter = logging.Formatter(formatstr)
-  rotateLog = logging.handlers.RotatingFileHandler(AmbariConfig.AmbariConfig.getLogFile(), "a", 10000000, 25)
+  rotateLog = logging.handlers.RotatingFileHandler(filename, "a", 10000000, 25)
   rotateLog.setFormatter(formatter)
   logger.addHandler(rotateLog)
       
   if verbose:
-    logging.basicConfig(format=formatstr, level=logging.DEBUG, filename=AmbariConfig.AmbariConfig.getLogFile())
+    logging.basicConfig(format=formatstr, level=logging.DEBUG, filename=filename)
     logger.setLevel(logging.DEBUG)
     logger.info("loglevel=logging.DEBUG")
   else:
-    logging.basicConfig(format=formatstr, level=logging.INFO, filename=AmbariConfig.AmbariConfig.getLogFile())
+    logging.basicConfig(format=formatstr, level=logging.INFO, filename=filename)
     logger.setLevel(logging.INFO)
     logger.info("loglevel=logging.INFO")
-    
-  global is_logger_setup
-  is_logger_setup = True
 
 def add_syslog_handler(logger):
     
@@ -224,6 +221,8 @@ def reset_agent(options):
 
   sys.exit(0)
 
+MAX_RETRIES = 10
+
 # event - event, that will be passed to Controller and NetUtil to make able to interrupt loops form outside process
 # we need this for windows os, where no sigterm available
 def main(heartbeat_stop_callback=None):
@@ -236,9 +235,10 @@ def main(heartbeat_stop_callback=None):
 
   expected_hostname = options.expected_hostname
 
-  current_user = getpass.getuser()
-
-  setup_logging(options.verbose)
+  setup_logging(logger, AmbariConfig.AmbariConfig.getLogFile(), options.verbose)
+  global is_logger_setup
+  is_logger_setup = True
+  setup_logging(alerts_logger, AmbariConfig.AmbariConfig.getAlertsLogFile(), options.verbose)
 
   default_cfg = {'agent': {'prefix': '/home/ambari'}}
   config.load(default_cfg)
@@ -277,31 +277,58 @@ def main(heartbeat_stop_callback=None):
 
   update_log_level(config)
 
-  server_hostname = hostname.server_hostname(config)
-  server_url = config.get_api_url()
-
   if not OSCheck.get_os_family() == OSConst.WINSRV_FAMILY:
     daemonize()
 
-  try:
-    server_ip = socket.gethostbyname(server_hostname)
-    logger.info('Connecting to Ambari server at %s (%s)', server_url, server_ip)
-  except socket.error:
-    logger.warn("Unable to determine the IP address of the Ambari server '%s'", server_hostname)
+  #
+  # Iterate through the list of server hostnames and connect to the first active server
+  #
 
-  # Wait until server is reachable
-  netutil = NetUtil(heartbeat_stop_callback)
-  retries, connected = netutil.try_to_connect(server_url, -1, logger)
-  # Ambari Agent was stopped using stop event
-  if connected:
-    # Launch Controller communication
-    controller = Controller(config, heartbeat_stop_callback)
-    controller.start()
-    controller.join()
-  if not OSCheck.get_os_family() == OSConst.WINSRV_FAMILY:
-    ExitHelper.execute_cleanup()
-    stop_agent()
-  logger.info("finished")
+  active_server = None
+  server_hostnames = hostname.server_hostnames(config)
+
+  connected = False
+  stopped = False
+
+  # Keep trying to connect to a server or bail out if ambari-agent was stopped
+  while not connected and not stopped:
+    for server_hostname in server_hostnames:
+      try:
+        server_ip = socket.gethostbyname(server_hostname)
+        server_url = config.get_api_url(server_hostname)
+        logger.info('Connecting to Ambari server at %s (%s)', server_url, server_ip)
+      except socket.error:
+        logger.warn("Unable to determine the IP address of the Ambari server '%s'", server_hostname)
+
+      # Wait until MAX_RETRIES to see if server is reachable
+      netutil = NetUtil(heartbeat_stop_callback)
+      (retries, connected, stopped) = netutil.try_to_connect(server_url, MAX_RETRIES, logger)
+
+      # if connected, launch controller
+      if connected:
+        logger.info('Connected to Ambari server %s', server_hostname)
+        # Set the active server
+        active_server = server_hostname
+        # Launch Controller communication
+        controller = Controller(config, server_hostname, heartbeat_stop_callback)
+        controller.start()
+        controller.join()
+
+      #
+      # If Ambari Agent connected to the server or
+      # Ambari Agent was stopped using stop event
+      # Clean up if not Windows OS
+      #
+      if connected or stopped:
+        if not OSCheck.get_os_family() == OSConst.WINSRV_FAMILY:
+          ExitHelper.execute_cleanup()
+          stop_agent()
+        logger.info("finished")
+        break
+    pass # for server_hostname in server_hostnames
+  pass # while not (connected or stopped)
+
+  return active_server
 
 if __name__ == "__main__":
   is_logger_setup = False

@@ -837,15 +837,18 @@ class TestHDP22StackAdvisor(TestCase):
       "changed-configurations": [
         {
           "type": "yarn-site",
-          "name": "yarn.nodemanager.resource.memory-mb"
+          "name": "yarn.nodemanager.resource.memory-mb",
+          "old_value": "512"
         },
         {
           "type": "yarn-site",
-          "name": "yarn.scheduler.minimum-allocation-mb"
+          "name": "yarn.scheduler.minimum-allocation-mb",
+          "old_value": "512"
         },
         {
           "type": "yarn-site",
-          "name": "yarn.scheduler.maximum-allocation-mb"
+          "name": "yarn.scheduler.maximum-allocation-mb",
+          "old_value": "512"
         },
         {
           "type": "yarn-site",
@@ -926,7 +929,8 @@ class TestHDP22StackAdvisor(TestCase):
     configurations["yarn-site"]["properties"]["yarn.nodemanager.resource.percentage-physical-cpu-limit"] = '0.5'
     services["changed-configurations"].append({
           "type": "yarn-site",
-          "name": "yarn.nodemanager.resource.percentage-physical-cpu-limit"
+          "name": "yarn.nodemanager.resource.percentage-physical-cpu-limit",
+          "old_value": "6"
         })
     expected["yarn-site"]["properties"]["yarn.nodemanager.resource.cpu-vcores"] = '5'
     expected["yarn-site"]["properties"]["yarn.scheduler.minimum-allocation-vcores"] = '1'
@@ -989,7 +993,7 @@ class TestHDP22StackAdvisor(TestCase):
       'hive-site': {
         'properties': {
           'hive.server2.enable.doAs': 'true',
-          'hive.server2.tez.default.queues': "queue1,queue2",
+          'hive.server2.tez.default.queues': "default",
           'hive.server2.tez.initialize.default.sessions': 'false',
           'hive.server2.tez.sessions.per.default.queue': '1',
           'hive.auto.convert.join.noconditionaltask.size': '268435456',
@@ -1036,7 +1040,7 @@ class TestHDP22StackAdvisor(TestCase):
          'hive.server2.authentication.kerberos.keytab': {'delete': 'true'}, 
          'hive.server2.authentication.ldap.url': {'delete': 'true'},
          'hive.server2.tez.default.queues': {
-           'entries': [{'value': 'queue1', 'label': 'queue1 queue'}, {'value': 'queue2', 'label': 'queue2 queue'}]
+           'entries': [{'value': 'default', 'label': 'default queue'}]
           }
         }
       },
@@ -1303,55 +1307,55 @@ class TestHDP22StackAdvisor(TestCase):
 
     # test 'hive.server2.tez.default.queues' leaf queues
     services["configurations"]['capacity-scheduler']['properties'] = {
-            "yarn.scheduler.capacity.maximum-am-resource-percent": "0.2",
-            "yarn.scheduler.capacity.maximum-applications": "10000",
-            "yarn.scheduler.capacity.node-locality-delay": "40",
-            "yarn.scheduler.capacity.queue-mappings-override.enable": "false",
-            "yarn.scheduler.capacity.resource-calculator": "org.apache.hadoop.yarn.util.resource.DefaultResourceCalculator",
-            "yarn.scheduler.capacity.root.accessible-node-labels": "*",
-            "yarn.scheduler.capacity.root.acl_administer_queue": "*",
-            "yarn.scheduler.capacity.root.capacity": "100",
-            "yarn.scheduler.capacity.root.default.a.a1.acl_administer_queue": "*",
-            "yarn.scheduler.capacity.root.default.a.a1.acl_submit_applications": "*",
-            "yarn.scheduler.capacity.root.default.a.a1.capacity": "75",
-            "yarn.scheduler.capacity.root.default.a.a1.maximum-capacity": "100",
-            "yarn.scheduler.capacity.root.default.a.a1.minimum-user-limit-percent": "100",
-            "yarn.scheduler.capacity.root.default.a.a1.ordering-policy": "fifo",
-            "yarn.scheduler.capacity.root.default.a.a1.state": "RUNNING",
-            "yarn.scheduler.capacity.root.default.a.a1.user-limit-factor": "1",
-            "yarn.scheduler.capacity.root.default.a.a2.acl_administer_queue": "*",
-            "yarn.scheduler.capacity.root.default.a.a2.acl_submit_applications": "*",
-            "yarn.scheduler.capacity.root.default.a.a2.capacity": "25",
-            "yarn.scheduler.capacity.root.default.a.a2.maximum-capacity": "25",
-            "yarn.scheduler.capacity.root.default.a.a2.minimum-user-limit-percent": "100",
-            "yarn.scheduler.capacity.root.default.a.a2.ordering-policy": "fifo",
-            "yarn.scheduler.capacity.root.default.a.a2.state": "RUNNING",
-            "yarn.scheduler.capacity.root.default.a.a2.user-limit-factor": "1",
-            "yarn.scheduler.capacity.root.default.a.acl_administer_queue": "*",
-            "yarn.scheduler.capacity.root.default.a.acl_submit_applications": "*",
-            "yarn.scheduler.capacity.root.default.a.capacity": "50",
-            "yarn.scheduler.capacity.root.default.a.maximum-capacity": "100",
-            "yarn.scheduler.capacity.root.default.a.minimum-user-limit-percent": "100",
-            "yarn.scheduler.capacity.root.default.a.ordering-policy": "fifo",
-            "yarn.scheduler.capacity.root.default.a.queues": "a1,a2",
-            "yarn.scheduler.capacity.root.default.a.state": "RUNNING",
-            "yarn.scheduler.capacity.root.default.a.user-limit-factor": "1",
-            "yarn.scheduler.capacity.root.default.acl_submit_applications": "*",
-            "yarn.scheduler.capacity.root.default.b.acl_administer_queue": "*",
-            "yarn.scheduler.capacity.root.default.b.acl_submit_applications": "*",
-            "yarn.scheduler.capacity.root.default.b.capacity": "50",
-            "yarn.scheduler.capacity.root.default.b.maximum-capacity": "50",
-            "yarn.scheduler.capacity.root.default.b.minimum-user-limit-percent": "100",
-            "yarn.scheduler.capacity.root.default.b.ordering-policy": "fifo",
-            "yarn.scheduler.capacity.root.default.b.state": "RUNNING",
-            "yarn.scheduler.capacity.root.default.b.user-limit-factor": "1",
-            "yarn.scheduler.capacity.root.default.capacity": "100",
-            "yarn.scheduler.capacity.root.default.maximum-capacity": "100",
-            "yarn.scheduler.capacity.root.default.queues": "a,b",
-            "yarn.scheduler.capacity.root.default.state": "RUNNING",
-            "yarn.scheduler.capacity.root.default.user-limit-factor": "1",
-            "yarn.scheduler.capacity.root.queues": "default"
-          }
+            "capacity-scheduler" : "yarn.scheduler.capacity.maximum-am-resource-percent=0.2\n"
+                                   "yarn.scheduler.capacity.maximum-applications=10000\n"
+                                   "yarn.scheduler.capacity.node-locality-delay=40\n"
+                                   "yarn.scheduler.capacity.queue-mappings-override.enable=false\n"
+                                   "yarn.scheduler.capacity.resource-calculator=org.apache.hadoop.yarn.util.resource.DefaultResourceCalculator\n"
+                                   "yarn.scheduler.capacity.root.accessible-node-labels=*\n"
+                                   "yarn.scheduler.capacity.root.acl_administer_queue=*\n"
+                                   "yarn.scheduler.capacity.root.capacity=100\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.acl_administer_queue=*\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.acl_submit_applications=*\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.capacity=75\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.maximum-capacity=100\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.minimum-user-limit-percent=100\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.ordering-policy=fifo\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.state=RUNNING\n"
+                                   "yarn.scheduler.capacity.root.default.a.a1.user-limit-factor=1\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.acl_administer_queue=*\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.acl_submit_applications=*\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.capacity=25\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.maximum-capacity=25\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.minimum-user-limit-percent=100\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.ordering-policy=fifo\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.state=RUNNING\n"
+                                   "yarn.scheduler.capacity.root.default.a.a2.user-limit-factor=1\n"
+                                   "yarn.scheduler.capacity.root.default.a.acl_administer_queue=*\n"
+                                   "yarn.scheduler.capacity.root.default.a.acl_submit_applications=*\n"
+                                   "yarn.scheduler.capacity.root.default.a.capacity=50\n"
+                                   "yarn.scheduler.capacity.root.default.a.maximum-capacity=100\n"
+                                   "yarn.scheduler.capacity.root.default.a.minimum-user-limit-percent=100\n"
+                                   "yarn.scheduler.capacity.root.default.a.ordering-policy=fifo\n"
+                                   "yarn.scheduler.capacity.root.default.a.queues=a1,a2\n"
+                                   "yarn.scheduler.capacity.root.default.a.state=RUNNING\n"
+                                   "yarn.scheduler.capacity.root.default.a.user-limit-factor=1\n"
+                                   "yarn.scheduler.capacity.root.default.acl_submit_applications=*\n"
+                                   "yarn.scheduler.capacity.root.default.b.acl_administer_queue=*\n"
+                                   "yarn.scheduler.capacity.root.default.b.acl_submit_applications=*\n"
+                                   "yarn.scheduler.capacity.root.default.b.capacity=50\n"
+                                   "yarn.scheduler.capacity.root.default.b.maximum-capacity=50\n"
+                                   "yarn.scheduler.capacity.root.default.b.minimum-user-limit-percent=100\n"
+                                   "yarn.scheduler.capacity.root.default.b.ordering-policy=fifo\n"
+                                   "yarn.scheduler.capacity.root.default.b.state=RUNNING\n"
+                                   "yarn.scheduler.capacity.root.default.b.user-limit-factor=1\n"
+                                   "yarn.scheduler.capacity.root.default.capacity=100\n"
+                                   "yarn.scheduler.capacity.root.default.maximum-capacity=100\n"
+                                   "yarn.scheduler.capacity.root.default.queues=a,b\n"
+                                   "yarn.scheduler.capacity.root.default.state=RUNNING\n"
+                                   "yarn.scheduler.capacity.root.default.user-limit-factor=1\n"
+                                   "yarn.scheduler.capacity.root.queues=default"}
+
     expected['hive-site']['properties']['hive.server2.tez.default.queues'] = 'default.a.a1,default.a.a2,default.b'
     expected['hive-site']['property_attributes']['hive.server2.tez.default.queues'] = {
            'entries': [{'value': 'default.a.a1', 'label': 'default.a.a1 queue'}, {'value': 'default.a.a2', 'label': 'default.a.a2 queue'}, {'value': 'default.b', 'label': 'default.b queue'}]
@@ -1600,7 +1604,8 @@ class TestHDP22StackAdvisor(TestCase):
       "changed-configurations": [
         {
           "type": "yarn-site",
-          "name": "yarn.scheduler.minimum-allocation-mb"
+          "name": "yarn.scheduler.minimum-allocation-mb",
+          "old_value": "512"
         },
         ]
 
@@ -1836,7 +1841,8 @@ class TestHDP22StackAdvisor(TestCase):
       "changed-configurations": [
         {
           "type": "yarn-site",
-          "name": "yarn.scheduler.minimum-allocation-mb"
+          "name": "yarn.scheduler.minimum-allocation-mb",
+          "old_value": "512"
         },
       ]
 
@@ -1977,13 +1983,13 @@ class TestHDP22StackAdvisor(TestCase):
     expected = {
       "ams-hbase-env": {
         "properties": {
-          "hbase_master_xmn_size": "128m",
-          "hbase_master_heapsize": "512m"
+          "hbase_master_xmn_size": "128",
+          "hbase_master_heapsize": "512"
         }
       },
       "ams-env": {
         "properties": {
-          "metrics_collector_heapsize": "512m",
+          "metrics_collector_heapsize": "512",
         }
       },
       "ams-hbase-site": {
@@ -2036,8 +2042,8 @@ class TestHDP22StackAdvisor(TestCase):
         ]
       }
     ]
-    expected["ams-hbase-env"]['properties']['hbase_master_heapsize'] = '1408m'
-    expected["ams-env"]['properties']['metrics_collector_heapsize'] = '512m'
+    expected["ams-hbase-env"]['properties']['hbase_master_heapsize'] = '1408'
+    expected["ams-env"]['properties']['metrics_collector_heapsize'] = '512'
 
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(configurations, expected)
@@ -2103,9 +2109,9 @@ class TestHDP22StackAdvisor(TestCase):
       }
 
     ]
-    expected["ams-hbase-env"]['properties']['hbase_master_heapsize'] = '2432m'
-    expected["ams-hbase-env"]['properties']['hbase_master_xmn_size'] = '256m'
-    expected["ams-env"]['properties']['metrics_collector_heapsize'] = '640m'
+    expected["ams-hbase-env"]['properties']['hbase_master_heapsize'] = '2432'
+    expected["ams-hbase-env"]['properties']['hbase_master_xmn_size'] = '256'
+    expected["ams-env"]['properties']['metrics_collector_heapsize'] = '640'
 
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(configurations, expected)
@@ -2114,7 +2120,8 @@ class TestHDP22StackAdvisor(TestCase):
     services['changed-configurations'] = [
       {
         "type": "ams-hbase-env",
-        "name": "hbase_master_heapsize"
+        "name": "hbase_master_heapsize",
+        "old_value": "1024"
       }
     ]
 
@@ -2124,29 +2131,29 @@ class TestHDP22StackAdvisor(TestCase):
     }
 
     # Embedded mode, 512m master heapsize, no splitpoints recommended
-    services["configurations"]['ams-hbase-env']['properties']['hbase_master_heapsize'] = '512m'
+    services["configurations"]['ams-hbase-env']['properties']['hbase_master_heapsize'] = '512'
     services["configurations"]['ams-hbase-site']['properties']['hbase.regionserver.global.memstore.lowerLimit'] = '0.3'
     services["configurations"]['ams-hbase-site']['properties']['hbase.hregion.memstore.flush.size'] = '134217728'
 
     expected['ams-site']['properties']['timeline.metrics.host.aggregate.splitpoints'] = ' '
     expected['ams-site']['properties']['timeline.metrics.cluster.aggregate.splitpoints'] = ' '
-    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '512m'
+    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '512'
 
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(configurations, expected)
 
     # Embedded mode, 4096m master heapsize, some splitpoints recommended
-    services["configurations"]['ams-hbase-env']['properties']['hbase_master_heapsize'] = '4096m'
+    services["configurations"]['ams-hbase-env']['properties']['hbase_master_heapsize'] = '4096'
     expected['ams-site']['properties']['timeline.metrics.host.aggregate.splitpoints'] = \
       'jvm.JvmMetrics.MemHeapCommittedM,regionserver.Server.Increment_median'
     expected['ams-site']['properties']['timeline.metrics.cluster.aggregate.splitpoints'] = ' '
-    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '4096m'
+    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '4096'
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(configurations, expected)
 
     # Embedded mode, 8192m master heapsize, more splitpoints recommended
-    services["configurations"]['ams-hbase-env']['properties']['hbase_master_heapsize'] = '8192m'
-    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '8192m'
+    services["configurations"]['ams-hbase-env']['properties']['hbase_master_heapsize'] = '8192'
+    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '8192'
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(len(configurations['ams-site']['properties']['timeline.metrics.host.aggregate.splitpoints'].split(',')), 10)
     self.assertEquals(len(configurations['ams-site']['properties']['timeline.metrics.cluster.aggregate.splitpoints'].split(',')), 2)
@@ -2155,25 +2162,28 @@ class TestHDP22StackAdvisor(TestCase):
     services['changed-configurations'] = [
       {
         "type": "ams-hbase-env",
-        "name": "hbase_regionserver_heapsize"
+        "name": "hbase_regionserver_heapsize",
+        "old_value": "512"
       }
     ]
     services["configurations"]['ams-hbase-site']['properties']['hbase.rootdir'] = 'hdfs://host1/amshbase'
     expected['ams-hbase-site']['properties']['hbase.rootdir'] = 'hdfs://host1/amshbase'
-    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '512m'
+    expected['ams-hbase-env']['properties']['hbase_master_heapsize'] = '512'
+    # services["configurations"]['ams-hbase-site']['properties']['dfs.client.read.shortcircuit'] = 'true'
+    expected['ams-hbase-site']['properties']['dfs.client.read.shortcircuit'] = 'true'
 
     # Distributed mode, low memory, no splitpoints recommended
-    services["configurations"]['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '512m'
+    services["configurations"]['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '512'
     expected['ams-site']['properties']['timeline.metrics.host.aggregate.splitpoints'] = ' '
     expected['ams-site']['properties']['timeline.metrics.cluster.aggregate.splitpoints'] = ' '
-    expected['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '512m'
-    expected['ams-hbase-env']['properties']['regionserver_xmn_size'] = '256m'
+    expected['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '512'
+    expected['ams-hbase-env']['properties']['regionserver_xmn_size'] = '256'
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(configurations, expected)
 
     # Distributed mode, more memory, more splitpoints recommended
-    services["configurations"]['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '8192m'
-    expected['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '8192m'
+    services["configurations"]['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '8192'
+    expected['ams-hbase-env']['properties']['hbase_regionserver_heapsize'] = '8192'
     self.stackAdvisor.recommendAmsConfigurations(configurations, clusterData, services, hosts)
     self.assertEquals(len(configurations['ams-site']['properties']['timeline.metrics.host.aggregate.splitpoints'].split(',')), 10)
     self.assertEquals(len(configurations['ams-site']['properties']['timeline.metrics.cluster.aggregate.splitpoints'].split(',')), 2)
@@ -2964,7 +2974,7 @@ class TestHDP22StackAdvisor(TestCase):
     }
 
     # Test with ranger plugin enabled, validation fails
-    res_expected = [{'config-type': 'hiveserver2-site', 'message': 'If Ranger Hive Plugin is enabled. hive.security.authorization.manager needs to be set to com.xasecure.authorization.hive.authorizer.XaSecureHiveAuthorizerFactory', 'type': 'configuration', 'config-name': 'hive.security.authorization.manager', 'level': 'WARN'}, {'config-type': 'hiveserver2-site', 'message': 'If Ranger Hive Plugin is enabled. hive.security.authenticator.manager needs to be set to org.apache.hadoop.hive.ql.security.SessionStateUserAuthenticator', 'type': 'configuration', 'config-name': 'hive.security.authenticator.manager', 'level': 'WARN'}]
+    res_expected = [{'config-type': 'hiveserver2-site', 'message': 'If Ranger Hive Plugin is enabled. hive.security.authorization.manager under hiveserver2-site needs to be set to com.xasecure.authorization.hive.authorizer.XaSecureHiveAuthorizerFactory', 'type': 'configuration', 'config-name': 'hive.security.authorization.manager', 'level': 'WARN'}, {'config-type': 'hiveserver2-site', 'message': 'If Ranger Hive Plugin is enabled. hive.security.authenticator.manager under hiveserver2-site needs to be set to org.apache.hadoop.hive.ql.security.SessionStateUserAuthenticator', 'type': 'configuration', 'config-name': 'hive.security.authenticator.manager', 'level': 'WARN'}]
     res = self.stackAdvisor.validateHiveServer2Configurations(properties, recommendedDefaults, configurations, services, {})
     self.assertEquals(res, res_expected)
 

@@ -107,8 +107,23 @@ class NameNodeDefault(NameNode):
   def get_stack_to_component(self):
     return {"HDP": "hadoop-hdfs-namenode"}
 
+  def restore_snapshot(self, env):
+    """
+    Restore the snapshot during a Downgrade.
+    """
+    print "TODO AMBARI-12698"
+    pass
+
+  def prepare_non_rolling_upgrade(self, env):
+    print "TODO AMBARI-12698"
+    pass
+
   def prepare_rolling_upgrade(self, env):
     namenode_upgrade.prepare_rolling_upgrade()
+
+  def finalize_non_rolling_upgrade(self, env):
+    print "TODO AMBARI-12698"
+    pass
 
   def finalize_rolling_upgrade(self, env):
     namenode_upgrade.finalize_rolling_upgrade()
@@ -228,7 +243,7 @@ class NameNodeDefault(NameNode):
     basedir = os.path.join(env.config.basedir, 'scripts')
     if(threshold == 'DEBUG'): #FIXME TODO remove this on PROD
       basedir = os.path.join(env.config.basedir, 'scripts', 'balancer-emulator')
-      command = ['python','hdfs-command.py']
+      command = ['ambari-python-wrap','hdfs-command.py']
 
     _print("Executing command %s\n" % command)
 

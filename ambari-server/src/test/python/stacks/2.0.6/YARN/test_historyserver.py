@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 import json
-from mock.mock import MagicMock, patch
+from mock.mock import MagicMock, patch, call
 from resource_management.libraries.script.script import Script
 from resource_management.libraries.functions import version
 from stacks.utils.RMFTestCase import *
@@ -261,6 +261,9 @@ class TestHistoryServer(RMFTestCase):
       recursive = True,
       cd_access = 'a',
     )
+    self.assertResourceCalled('Execute', ('chown', '-R', u'mapred:hadoop', '/hadoop/mapreduce/jhs'),
+        sudo = True,
+    )
     self.assertResourceCalled('Directory', '/var/run/hadoop-yarn',
       owner = 'yarn',
       group = 'hadoop',
@@ -488,6 +491,9 @@ class TestHistoryServer(RMFTestCase):
       group = 'hadoop',
       recursive = True,
       cd_access = 'a',
+    )
+    self.assertResourceCalled('Execute', ('chown', '-R', u'mapred:hadoop', '/hadoop/mapreduce/jhs'),
+        sudo = True,
     )
     self.assertResourceCalled('Directory', '/var/run/hadoop-yarn',
       owner = 'yarn',
@@ -779,8 +785,10 @@ class TestHistoryServer(RMFTestCase):
                        call_mocks = [(0, None), (0, None), (0, None)],
                        mocks_dict = mocks_dict)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hadoop-mapreduce-historyserver', version), sudo=True)
-    copy_to_hdfs_mock.assert_called_with("tez", "hadoop", "hdfs", host_sys_prepped=False)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-mapreduce-historyserver', version), sudo=True)
+    self.assertTrue(call("tez", "hadoop", "hdfs", host_sys_prepped=False) in copy_to_hdfs_mock.call_args_list)
+    self.assertTrue(call("slider", "hadoop", "hdfs", host_sys_prepped=False) in copy_to_hdfs_mock.call_args_list)
+
 
     self.assertResourceCalled('HdfsResource', None,
         security_enabled = False,
@@ -798,8 +806,8 @@ class TestHistoryServer(RMFTestCase):
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])

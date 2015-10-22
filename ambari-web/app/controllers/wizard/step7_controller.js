@@ -17,6 +17,7 @@
  */
 
 var App = require('app');
+var configPropertyHelper = require('utils/configs/config_property_helper');
 /**
  * By Step 7, we have the following information stored in App.db and set on this
  * controller by the router.
@@ -118,6 +119,14 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
   }.property('wizardController.stackConfigsLoaded', 'isAppliedConfigLoaded'),
 
   /**
+   * PreInstall Checks allowed only for Install
+   * @type {boolean}
+   */
+  supportsPreInstallChecks: function () {
+    return App.get('supports.preInstallChecks') && 'installerController' === this.get('content.controllerName');
+  }.property('App.supports.preInstallChecks', 'wizardController.name'),
+
+  /**
    * Number of errors in the configs in the selected service
    * @type {number}
    */
@@ -127,7 +136,7 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
     }).filter(function(config) {
       return !config.get('isValid') || (config.get('overrides') || []).someProperty('isValid', false);
     }).filterProperty('isVisible').length;
-  }.property('selectedService.configs.@each.isValid', 'selectedService.configs.@each.overrideErrorTrigger'),
+  }.property('selectedService.configs.@each.isValid', 'selectedService.configs.@each.isVisible','selectedService.configs.@each.overrideErrorTrigger'),
 
   /**
    * Should Next-button be disabled
@@ -727,7 +736,7 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
       masterComponentHosts: this.get('wizardController.content.masterComponentHosts'),
       slaveComponentHosts: this.get('wizardController.content.slaveComponentHosts')
     };
-    var serviceConfigs = App.config.renderConfigs(configs, storedConfigs, this.get('allSelectedServiceNames'), this.get('installedServiceNames'), localDB);
+    var serviceConfigs = this.renderConfigs(configs, storedConfigs, this.get('allSelectedServiceNames'), this.get('installedServiceNames'), localDB);
     if (this.get('wizardController.name') === 'addServiceController') {
       serviceConfigs.setEach('showConfig', true);
       serviceConfigs.setEach('selected', false);
@@ -764,6 +773,116 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
       }
     }
     this.set('stepConfigs', serviceConfigs);
+  },
+
+  /**
+   * render configs, distribute them by service
+   * and wrap each in ServiceConfigProperty object
+   * @param configs
+   * @param storedConfigs
+   * @param allSelectedServiceNames
+   * @param installedServiceNames
+   * @param localDB
+   * @return {App.ServiceConfig[]}
+   */
+  renderConfigs: function (configs, storedConfigs, allSelectedServiceNames, installedServiceNames, localDB) {
+    var renderedServiceConfigs = [];
+    var services = [];
+
+    App.config.get('preDefinedServiceConfigs').forEach(function (serviceConfig) {
+      var serviceName = serviceConfig.get('serviceName');
+      if (allSelectedServiceNames.contains(serviceName) || serviceName === 'MISC') {
+        if (!installedServiceNames.contains(serviceName) || serviceName === 'MISC') {
+          serviceConfig.set('showConfig', true);
+        }
+        services.push(serviceConfig);
+      }
+    });
+    services.forEach(function (service) {
+      var configsByService = [];
+      var dependencies = {};
+      var serviceConfigs = [];
+
+      configs.forEach(function (config) {
+        if (config.serviceName === service.get('serviceName')) {
+          serviceConfigs.push(config);
+        }
+        if (config.filename === 'hive-site.xml' && config.name === 'hive.metastore.uris') {
+          dependencies['hive.metastore.uris'] = config.recommendedValue;
+        }
+        if (config.filename === 'zoo.cfg.xml' && config.name === 'clientPort') {
+          dependencies['clientPort'] = config.recommendedValue;
+        }
+      }, this);
+      serviceConfigs.forEach(function (_config) {
+        var serviceConfigProperty = App.ServiceConfigProperty.create(_config);
+        this.updateHostOverrides(serviceConfigProperty, _config);
+        if (!storedConfigs && !serviceConfigProperty.get('hasInitialValue')) {
+          configPropertyHelper.initialValue(serviceConfigProperty, localDB, dependencies);
+        }
+        serviceConfigProperty.validate();
+        configsByService.pushObject(serviceConfigProperty);
+      }, this);
+      var serviceConfig = App.config.createServiceConfig(service.get('serviceName'));
+      serviceConfig.set('showConfig', service.get('showConfig'));
+      serviceConfig.set('configs', configsByService);
+      if (['addServiceController', 'installerController'].contains(this.get('wizardController.name'))) {
+        this.addHostNamesToConfigs(serviceConfig, localDB.masterComponentHosts, localDB.slaveComponentHosts);
+      }
+      renderedServiceConfigs.push(serviceConfig);
+    }, this);
+    return renderedServiceConfigs;
+  },
+
+  /**
+   * Add host name properties to appropriate categories (for installer and add service)
+   * @param serviceConfig
+   * @param masterComponents
+   * @param slaveComponents
+   */
+  addHostNamesToConfigs: function(serviceConfig, masterComponents, slaveComponents) {
+    serviceConfig.get('configCategories').forEach(function(c) {
+      if (c.showHost) {
+        var value = [];
+        var componentName = c.name;
+        var masters = masterComponents.filterProperty('component', componentName);
+        if (masters.length) {
+          value = masters.mapProperty('hostName');
+        } else {
+          var slaves = slaveComponents.findProperty('componentName', componentName);
+          if (slaves) {
+            value = slaves.hosts.mapProperty('hostName');
+          }
+        }
+        var stackComponent = App.StackServiceComponent.find(componentName);
+        var hProperty = App.config.createHostNameProperty(serviceConfig.get('serviceName'), componentName, value, stackComponent);
+        var newConfigName = Em.get(hProperty, 'name');
+        if (!serviceConfig.get('configs').someProperty('name', newConfigName)) {
+          serviceConfig.get('configs').push(App.ServiceConfigProperty.create(hProperty));
+        }
+      }
+    }, this);
+  },
+
+  /**
+   * create new child configs from overrides, attach them to parent config
+   * override - value of config, related to particular host(s)
+   * @param configProperty
+   * @param storedConfigProperty
+   */
+  updateHostOverrides: function (configProperty, storedConfigProperty) {
+    if (storedConfigProperty.overrides != null && storedConfigProperty.overrides.length > 0) {
+      var overrides = [];
+      storedConfigProperty.overrides.forEach(function (overrideEntry) {
+        // create new override with new value
+        var newSCP = App.ServiceConfigProperty.create(configProperty);
+        newSCP.set('value', overrideEntry.value);
+        newSCP.set('isOriginalSCP', false); // indicated this is overridden value,
+        newSCP.set('parentSCP', configProperty);
+        overrides.pushObject(newSCP);
+      });
+      configProperty.set('overrides', overrides);
+    }
   },
 
   /**
@@ -891,7 +1010,7 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
     Em.keys(configsMap).forEach(function (filename) {
       Em.keys(configsMap[filename]).forEach(function (propertyName) {
         configs.push(configMixin.createDefaultConfig(propertyName,
-          configMixin.getServiceByConfigType(filename).get('serviceName'),
+          configMixin.getServiceByConfigType(filename) ? configMixin.getServiceByConfigType(filename).get('serviceName') : 'MISC',
           configMixin.getOriginalFileName(filename),
           false, {
             value: configsMap[filename][propertyName],
@@ -1134,11 +1253,11 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
    * @method getAmbariDatabaseSuccess
    */
   getAmbariDatabaseSuccess: function (data) {
-    var hiveDBHostname = this.get('stepConfigs').findProperty('serviceName', 'HIVE').configs.findProperty('name', 'hive_ambari_host').value;
+    var hiveDBHostname = this.get('stepConfigs').findProperty('serviceName', 'HIVE').configs.findProperty('name', 'hive_hostname').value;
     var ambariServiceHostComponents = data.hostComponents;
-    if (!!ambariServiceHostComponents.length) {
+    if (ambariServiceHostComponents.length) {
       var ambariDBInfo = JSON.stringify(ambariServiceHostComponents[0].RootServiceHostComponents.properties);
-      this.set('mySQLServerConflict', ambariDBInfo.indexOf('mysql') > 0 && ambariDBInfo.indexOf(hiveDBHostname) > 0);
+      this.set('mySQLServerConflict', ambariDBInfo.contains('mysql') && ambariDBInfo.indexOf(hiveDBHostname) > 0);
     } else {
       this.set('mySQLServerConflict', false);
     }
@@ -1160,34 +1279,63 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
     var hiveDBType = this.get('stepConfigs').findProperty('serviceName', 'HIVE').configs.findProperty('name', 'hive_database').value;
     if (hiveDBType == 'New MySQL Database') {
       var self = this;
-      this.checkMySQLHost().done(function () {
-        if (self.get('mySQLServerConflict')) {
-          // error popup before you can proceed
+      return this.checkMySQLHost().done(function () {
+        self.mySQLWarningHandler();
+      });
+    }
+    else {
+      this.moveNext();
+    }
+  },
+
+  /**
+   * Show warning popup about MySQL-DB issues (on post-submit)
+   *
+   * @returns {*}
+   * @method mySQLWarningHandler
+   */
+  mySQLWarningHandler: function () {
+    var self = this;
+    if (this.get('mySQLServerConflict')) {
+      // error popup before you can proceed
+      return App.ModalPopup.show({
+        header: Em.I18n.t('installer.step7.popup.mySQLWarning.header'),
+        body:Em.I18n.t('installer.step7.popup.mySQLWarning.body'),
+        secondary: Em.I18n.t('installer.step7.popup.mySQLWarning.button.gotostep5'),
+        primary: Em.I18n.t('installer.step7.popup.mySQLWarning.button.dismiss'),
+        encodeBody: false,
+        onPrimary: function () {
+          this._super();
+          self.set('submitButtonClicked', false);
+        },
+        onSecondary: function () {
+          var parent = this;
           return App.ModalPopup.show({
-            header: Em.I18n.t('installer.step7.popup.mySQLWarning.header'),
-            body:Em.I18n.t('installer.step7.popup.mySQLWarning.body'),
-            secondary: Em.I18n.t('installer.step7.popup.mySQLWarning.button.gotostep5'),
-            primary: Em.I18n.t('installer.step7.popup.mySQLWarning.button.dismiss'),
-            onSecondary: function () {
-              var parent = this;
-              return App.ModalPopup.show({
-                header: Em.I18n.t('installer.step7.popup.mySQLWarning.confirmation.header'),
-                body: Em.I18n.t('installer.step7.popup.mySQLWarning.confirmation.body'),
-                onPrimary: function () {
-                  this.hide();
-                  parent.hide();
-                  // go back to step 5: assign masters and disable default navigation warning
-                  App.router.get('installerController').gotoStep(5, true);
+            header: Em.I18n.t('installer.step7.popup.mySQLWarning.confirmation.header'),
+            body: Em.I18n.t('installer.step7.popup.mySQLWarning.confirmation.body'),
+            onPrimary: function () {
+              this.hide();
+              parent.hide();
+              // go back to step 5: assign masters and disable default navigation warning
+              if ('installerController' === self.get('content.controllerName')) {
+                App.router.get('installerController').gotoStep(5, true);
+              }
+              else {
+                if ('addServiceController' === self.get('content.controllerName')) {
+                  App.router.get('addServiceController').gotoStep(2, true);
                 }
-              });
+              }
+            },
+            onSecondary: function () {
+              this._super();
+              self.set('submitButtonClicked', false);
             }
           });
-        } else {
-          self.moveNext();
         }
       });
-    } else {
-      this.moveNext();
+    }
+    else {
+      return this.moveNext();
     }
   },
 
@@ -1310,6 +1458,7 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
    **/
   moveNext: function () {
     App.router.send('next');
+    this.set('submitButtonClicked', false);
   },
 
   /**
@@ -1319,22 +1468,33 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
    */
   submit: function () {
     if (this.get('isSubmitDisabled')) {
-      return;
+      return false;
     }
+    var preInstallChecksController = App.router.get('preInstallChecksController');
+    if (this.get('supportsPreInstallChecks')) {
+      if (preInstallChecksController.get('preInstallChecksWhereRun')) {
+        return this.postSubmit();
+      }
+      return preInstallChecksController.notRunChecksWarnPopup(this.postSubmit.bind(this));
+    }
+    return this.postSubmit();
+  },
+
+  postSubmit: function () {
     var self = this;
     this.set('submitButtonClicked', true);
     this.serverSideValidation().done(function() {
       self.serverSideValidationCallback();
     })
-    .fail(function (value) {
-      if ("invalid_configs" == value) {
-        self.set('submitButtonClicked', false);
-      } else {
-        // Failed due to validation mechanism failure.
-        // Should proceed with other checks
-        self.serverSideValidationCallback();
-      }
-    });
+      .fail(function (value) {
+        if ("invalid_configs" == value) {
+          self.set('submitButtonClicked', false);
+        } else {
+          // Failed due to validation mechanism failure.
+          // Should proceed with other checks
+          self.serverSideValidationCallback();
+        }
+      });
   },
 
   /**
@@ -1345,7 +1505,6 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
     this.showOozieDerbyWarningPopup(function() {
       self.checkDatabaseConnectionTest().done(function () {
         self.resolveHiveMysqlDatabase();
-        self.set('submitButtonClicked', false);
       });
     });
   },
@@ -1366,4 +1525,5 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, App.E
       }
     }
   }
+
 });

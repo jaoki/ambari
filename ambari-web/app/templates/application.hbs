@@ -80,7 +80,7 @@
                 {{/if}}
                 {{#if isClusterDataLoaded}}
                   {{#isAccessible upgrade_ADMIN}}
-                    <li><a href="" {{action showSettingsPopup target="controller"}}>{{t app.settings}}</a></li>
+                    <li><a href="" {{action showSettingsPopup target="App.router.userSettingsController"}}>{{t app.settings}}</a></li>
                   {{/isAccessible}}
                 {{/if}}
                 {{#if showExitLink}}
@@ -143,6 +143,11 @@
                               class="label upgrade-aborted" {{action "openUpgradeDialog" target="App.router.mainAdminStackAndUpgradeController"}}>
                           <i class="icon-remove"></i>&nbsp;{{t admin.stackVersions.version.upgrade.aborted}}</span>
                     {{/if}}
+                  {{/if}}
+                  {{#if App.router.mainAdminStackAndUpgradeController.isSuspended}}
+                      <span class="label upgrade-holding" {{action "openUpgradeDialog" target="App.router.mainAdminStackAndUpgradeController"}}>
+                          <i class="icon-pause"></i>&nbsp;{{t admin.stackVersions.version.upgrade.suspended}}
+                      </span>
                   {{/if}}
                 </a>
                 </p>

@@ -23,6 +23,7 @@
 <configuration>
   <property>
     <name>zk_user</name>
+    <display-name>ZooKeeper User</display-name>
     <value>zookeeper</value>
     <property-type>USER</property-type>
     <description>ZooKeeper User.</description>
@@ -33,6 +34,7 @@
     <display-name>ZooKeeper Log Dir</display-name>
     <description>ZooKeeper Log Dir</description>
     <value-attributes>
+      <type>directory</type>
       <editable-only-at-install>true</editable-only-at-install>
       <overridable>false</overridable>
     </value-attributes>
@@ -43,6 +45,7 @@
     <display-name>ZooKeeper PID Dir</display-name>
     <description>ZooKeeper Pid Dir</description>
     <value-attributes>
+      <type>directory</type>
       <editable-only-at-install>true</editable-only-at-install>
       <overridable>false</overridable>
     </value-attributes>

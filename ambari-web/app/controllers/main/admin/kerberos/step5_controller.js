@@ -15,7 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- var stringUtils = require('utils/string_utils');
+var stringUtils = require('utils/string_utils');
+var fileUtils = require('utils/file_utils');
 
 App.KerberosWizardStep5Controller = App.KerberosProgressPageController.extend({
   name: 'kerberosWizardStep5Controller',
@@ -46,7 +47,7 @@ App.KerberosWizardStep5Controller = App.KerberosProgressPageController.extend({
   getCSVDataSuccessCallback: function (data, opt, params) {
     this.set('csvData', this.prepareCSVData(data.split('\n')));
     if(!Em.get(params, 'skipDownload')){
-      this.downloadCSV();
+      fileUtils.downloadTextFile(stringUtils.arrayToCSV(this.get('csvData')), 'csv', 'kerberos.csv');
     }
   },
 
@@ -56,32 +57,6 @@ App.KerberosWizardStep5Controller = App.KerberosProgressPageController.extend({
     }
 
     return array;
-  },
-
-  /**
-   * download CSV file
-   */
-  downloadCSV: function () {
-    if ($.browser.msie && $.browser.version < 10) {
-      this.openInfoInNewTab();
-    } else {
-      try {
-        var blob = new Blob([stringUtils.arrayToCSV(this.get('csvData'))], {type: "text/csv;charset=utf-8;"});
-        saveAs(blob, "kerberos.csv");
-      } catch (e) {
-        this.openInfoInNewTab();
-      }
-    }
-  },
-
-  /**
-   * open content of CSV file in new window
-   */
-  openInfoInNewTab: function () {
-    var newWindow = window.open('');
-    var newDocument = newWindow.document;
-    newDocument.write(stringUtils.arrayToCSV(this.get('hostComponents')));
-    newWindow.focus();
   },
 
   /**
@@ -146,31 +121,30 @@ App.KerberosWizardStep5Controller = App.KerberosProgressPageController.extend({
   }.property('status'),
 
   confirmProperties: function () {
-    var kdc_type = App.router.kerberosWizardController.content.serviceConfigProperties.findProperty('name','kdc_type').value,
-      filterObject = [
-        {
-          key: Em.I18n.t('admin.kerberos.wizard.step1.option.kdc'),
-          properties: ['kdc_type','kdc_host','realm','executable_search_paths']
-        },
-        {
-          key: Em.I18n.t('admin.kerberos.wizard.step1.option.ad'),
-          properties: ['kdc_type','kdc_host','realm','ldap_url','container_dn','executable_search_paths']
-        },
-        {
-          key: Em.I18n.t('admin.kerberos.wizard.step1.option.manual'),
-          properties: ['kdc_type','realm','executable_search_paths']
-        }
-      ],
-      kdcTypeProperties = filterObject.filter(function(item) {
-        return item.key === kdc_type;
-      }),
-      filterBy = kdcTypeProperties.length ? kdcTypeProperties[0].properties : [],
-      returnArray = App.router.kerberosWizardController.content.serviceConfigProperties.filter(function(item) {
-        return filterBy.contains(item.name);
-      }).map(function(item) {
-        item['label'] = Em.I18n.t('admin.kerberos.wizard.step5.'+item['name']+'.label');
-        return item;
-      });
-    return returnArray;
+    var kdc_type = App.router.get('kerberosWizardController.content.kerberosOption'),
+        filterObject = [
+          {
+            key: Em.I18n.t('admin.kerberos.wizard.step1.option.kdc'),
+            properties: ['kdc_type', 'kdc_host', 'realm', 'executable_search_paths']
+          },
+          {
+            key: Em.I18n.t('admin.kerberos.wizard.step1.option.ad'),
+            properties: ['kdc_type', 'kdc_host', 'realm', 'ldap_url', 'container_dn', 'executable_search_paths']
+          },
+          {
+            key: Em.I18n.t('admin.kerberos.wizard.step1.option.manual'),
+            properties: ['kdc_type', 'realm', 'executable_search_paths']
+          }
+        ],
+        kdcTypeProperties = filterObject.filter(function (item) {
+          return item.key === kdc_type;
+        }),
+        filterBy = kdcTypeProperties.length ? kdcTypeProperties[0].properties : [];
+    return App.router.kerberosWizardController.content.serviceConfigProperties.filter(function (item) {
+      return filterBy.contains(item.name);
+    }).map(function (item) {
+      item['label'] = Em.I18n.t('admin.kerberos.wizard.step5.' + item['name'] + '.label');
+      return item;
+    });
   }.property('App.router.kerberosWizardController.content.@each.serviceConfigProperties')
 });

@@ -50,7 +50,7 @@ App.ConfigsSaverMixin = Em.Mixin.create({
    * List of heapsize properties not to be parsed
    * @type {string[]}
    */
-  heapsizeException: ['hadoop_heapsize', 'yarn_heapsize', 'nodemanager_heapsize', 'resourcemanager_heapsize', 'apptimelineserver_heapsize', 'jobhistory_heapsize', 'nfsgateway_heapsize', 'accumulo_master_heapsize', 'accumulo_tserver_heapsize', 'accumulo_monitor_heapsize', 'accumulo_gc_heapsize', 'accumulo_other_heapsize'],
+  heapsizeException: ['hadoop_heapsize', 'yarn_heapsize', 'nodemanager_heapsize', 'resourcemanager_heapsize', 'apptimelineserver_heapsize', 'jobhistory_heapsize', 'nfsgateway_heapsize', 'accumulo_master_heapsize', 'accumulo_tserver_heapsize', 'accumulo_monitor_heapsize', 'accumulo_gc_heapsize', 'accumulo_other_heapsize', 'hbase_master_heapsize', 'hbase_regionserver_heapsize', 'metrics_collector_heapsize'],
 
   /**
    * Regular expression for heapsize properties detection
@@ -444,6 +444,7 @@ App.ConfigsSaverMixin = Em.Mixin.create({
   formatValueBeforeSave: function(property) {
     var name = property.get('name');
     var value = property.get('value');
+    var kdcTypesMap = App.router.get('mainAdminKerberosController.kdcTypesValues');
     //TODO check for core-site
     if (this.get('heapsizeRegExp').test(name) && !this.get('heapsizeException').contains(name) && !(value).endsWith("m")) {
       return value += "m";
@@ -453,7 +454,9 @@ App.ConfigsSaverMixin = Em.Mixin.create({
     }
     switch (name) {
       case 'kdc_type':
-        return App.router.get('mainAdminKerberosController.kdcTypesValues')[property.get('value')];
+        return Em.keys(kdcTypesMap).filter(function(key) {
+            return kdcTypesMap[key] === property.get('value');
+        })[0];
       case 'storm.zookeeper.servers':
       case 'nimbus.seeds':
         if (Em.isArray(value)) {
@@ -855,123 +858,6 @@ App.ConfigsSaverMixin = Em.Mixin.create({
         this.hide();
       }
     });
-  },
-
-  /**
-   * TODO the methods below are not used as the logic was changed
-   * check and delete if this methods is not required
-   */
-
-  /**
-   * filter out unchanged configurationsisPropertiesChanged
-   * @param {Array} configsToSave
-   * @private
-   * @method filterChangedConfiguration
-   */
-  filterChangedConfiguration: function (configsToSave) {
-    var changedConfigs = [];
-
-    configsToSave.forEach(function (configSite) {
-      var oldConfig = App.router.get('configurationController').getConfigsByTags([
-        {siteName: configSite.type, tagName: this.loadedClusterSiteToTagMap[configSite.type]}
-      ]);
-      oldConfig = oldConfig[0] || {};
-      var oldProperties = oldConfig.properties || {};
-      var oldAttributes = oldConfig["properties_attributes"] || {};
-      var newProperties = configSite.properties || {};
-      var newAttributes = configSite["properties_attributes"] || {};
-      if (this.isAttributesChanged(oldAttributes, newAttributes) || this.isConfigChanged(oldProperties, newProperties) || this.get('modifiedFileNames').contains(App.config.getOriginalFileName(configSite.type))) {
-        changedConfigs.push(configSite);
-      }
-    }, this);
-    return changedConfigs;
-  },
-
-  /**
-   * Compares the loaded config values with the saving config values.
-   * @param {Object} loadedConfig -
-   * loadedConfig: {
-   *      configName1: "configValue1",
-   *      configName2: "configValue2"
-   *   }
-   * @param {Object} savingConfig
-   * savingConfig: {
-   *      configName1: "configValue1",
-   *      configName2: "configValue2"
-   *   }
-   * @returns {boolean}
-   * @private
-   * @method isConfigChanged
-   */
-  isConfigChanged: function (loadedConfig, savingConfig) {
-    if (loadedConfig != null && savingConfig != null) {
-      var seenLoadKeys = [];
-      for (var loadKey in loadedConfig) {
-        if (!loadedConfig.hasOwnProperty(loadKey)) continue;
-        seenLoadKeys.push(loadKey);
-        var loadValue = loadedConfig[loadKey];
-        var saveValue = savingConfig[loadKey];
-        if ("boolean" == typeof(saveValue)) {
-          saveValue = saveValue.toString();
-        }
-        if (saveValue == null) {
-          saveValue = "null";
-        }
-        if (loadValue !== saveValue) {
-          return true;
-        }
-      }
-      for (var saveKey in savingConfig) {
-        if (seenLoadKeys.indexOf(saveKey) < 0) {
-          return true;
-        }
-      }
-    }
-    return false;
-  },
-
-  /**
-   * Compares the loaded config properties attributes with the saving config properties attributes.
-   * @param {Object} oldAttributes -
-   * oldAttributes: {
-   *   supports: {
-   *     final: {
-   *       "configValue1" : "true",
-   *       "configValue2" : "true"
-   *     }
-   *   }
-   * }
-   * @param {Object} newAttributes
-   * newAttributes: {
-   *   supports: {
-   *     final: {
-   *       "configValue1" : "true",
-   *       "configValue2" : "true"
-   *     }
-   *   }
-   * }
-   * @returns {boolean}
-   * @private
-   * @method isAttributesChanged
-   */
-  isAttributesChanged: function (oldAttributes, newAttributes) {
-    oldAttributes = oldAttributes.final || {};
-    newAttributes = newAttributes.final || {};
-
-    var key;
-    for (key in oldAttributes) {
-      if (oldAttributes.hasOwnProperty(key)
-        && (!newAttributes.hasOwnProperty(key) || newAttributes[key] !== oldAttributes[key])) {
-        return true;
-      }
-    }
-    for (key in newAttributes) {
-      if (newAttributes.hasOwnProperty(key)
-        && (!oldAttributes.hasOwnProperty(key) || newAttributes[key] !== oldAttributes[key])) {
-        return true;
-      }
-    }
-    return false;
   },
 
   /**

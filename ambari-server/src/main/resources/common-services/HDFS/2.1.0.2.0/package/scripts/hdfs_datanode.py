@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-
+import os
 from resource_management import *
 from resource_management.libraries.functions.dfs_datanode_helper import handle_dfs_data_dir
 from utils import service
@@ -48,7 +48,21 @@ def datanode(action=None):
               owner=params.hdfs_user,
               group=params.user_group)
 
-    handle_dfs_data_dir(create_dirs, params)
+    if not os.path.isdir(os.path.dirname(params.data_dir_mount_file)):
+      Directory(os.path.dirname(params.data_dir_mount_file),
+                recursive=True,
+                mode=0755,
+                owner=params.hdfs_user,
+                group=params.user_group)
+
+    data_dir_to_mount_file_content = handle_dfs_data_dir(create_dirs, params)
+    File(params.data_dir_mount_file,
+         owner=params.hdfs_user,
+         group=params.user_group,
+         mode=0644,
+         content=data_dir_to_mount_file_content
+    )
+
   elif action == "start" or action == "stop":
     import params
     service(

@@ -58,6 +58,13 @@ App.ServerValidatorMixin = Em.Mixin.create({
   recommendationsConfigs: null,
 
   /**
+   * array of cluster-env configs
+   * used for validation request
+   * @type {Array}
+   */
+  clusterEnvConfigs: [],
+
+  /**
    * by default loads data from model otherwise must be overridden as computed property
    * refer to \assets\data\stacks\HDP-2.1\recommendations_configs.json to learn structure
    * (shouldn't contain configurations filed)
@@ -231,32 +238,95 @@ App.ServerValidatorMixin = Em.Mixin.create({
    * send request to validate configs
    * @returns {*}
    */
-  runServerSideValidation: function(deferred) {
+  runServerSideValidation: function (deferred) {
     var self = this;
     var recommendations = this.get('hostGroups');
-    recommendations.blueprint.configurations = blueprintUtils.buildConfigsJSON(this.get('services'), this.get('stepConfigs'));
+    var services = this.get('services');
+    var stepConfigs = this.get('stepConfigs');
 
-    return App.ajax.send({
-      name: 'config.validations',
-      sender: this,
-      data: {
-        stackVersionUrl: App.get('stackVersionURL'),
-        hosts: this.get('hostNames'),
-        services: this.get('serviceNames'),
-        validate: 'configurations',
-        recommendations: recommendations
-      },
-      success: 'validationSuccess',
-      error: 'validationError'
-    }).complete(function() {
-      self.warnUser(deferred);
+    return this.getBlueprintConfigurations().done(function(blueprintConfigurations){
+      recommendations.blueprint.configurations = blueprintConfigurations;
+      return App.ajax.send({
+        name: 'config.validations',
+        sender: self,
+        data: {
+          stackVersionUrl: App.get('stackVersionURL'),
+          hosts: self.get('hostNames'),
+          services: self.get('serviceNames'),
+          validate: 'configurations',
+          recommendations: recommendations
+        },
+        success: 'validationSuccess',
+        error: 'validationError'
+      }).complete(function () {
+        self.warnUser(deferred);
+      });
     });
   },
 
+  /**
+   * Return JSON for blueprint configurations
+   * @returns {*}
+   */
+  getBlueprintConfigurations: function () {
+    var dfd = $.Deferred();
+    var services = this.get('services');
+    var stepConfigs = this.get('stepConfigs');
+    var allConfigTypes = [];
+
+    services.forEach(function (service) {
+      allConfigTypes = allConfigTypes.concat(Em.keys(service.get('configTypes')))
+    });
+    // check if we have configs from 'cluster-env', if not, then load them, as they are mandatory for validation request
+    if (!allConfigTypes.contains('cluster-env')) {
+      this.getClusterEnvConfigsForValidation().done(function(clusterEnvConfigs){
+        services = services.concat(Em.Object.create({
+          serviceName: 'MISC',
+          configTypes: {'cluster-env': {}}
+        }));
+        stepConfigs = stepConfigs.concat(Em.Object.create({
+          serviceName: 'MISC',
+          configs: clusterEnvConfigs
+        }));
+        dfd.resolve(blueprintUtils.buildConfigsJSON(services, stepConfigs));
+      });
+    } else {
+      dfd.resolve(blueprintUtils.buildConfigsJSON(services, stepConfigs));
+    }
+    return dfd.promise();
+  },
+
+  getClusterEnvConfigsForValidation: function () {
+    var dfd = $.Deferred();
+    App.ajax.send({
+      name: 'config.cluster_env_site',
+      sender: this,
+      error: 'validationError'
+    }).done(function (data) {
+      App.router.get('configurationController').getConfigsByTags([{
+        siteName: data.items[0].type,
+        tagName: data.items[0].tag
+      }]).done(function (clusterEnvConfigs) {
+        var configsObject = clusterEnvConfigs[0].properties;
+        var configsArray = [];
+        for (var property in configsObject) {
+          if (configsObject.hasOwnProperty(property)) {
+            configsArray.push(Em.Object.create({
+              name: property,
+              value: configsObject[property],
+              filename: 'cluster-env.xml'
+            }));
+          }
+        }
+        dfd.resolve(configsArray);
+      });
+    });
+    return dfd.promise();
+  },
 
   /**
    * @method validationSuccess
-   * success callback after getting responce from server
+   * success callback after getting response from server
    * go through the step configs and set warn and error messages
    * @param data
    */

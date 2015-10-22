@@ -31,6 +31,12 @@ App.ServiceConfigView = Em.View.extend({
   filter: '',
 
   /**
+   * Determines that active tab is set during view initialize.
+   * @type {boolean}
+   */
+  initalActiveTabIsSet: false,
+
+  /**
    * Bound from parent view in the template
    * @type {object[]}
    */
@@ -114,8 +120,6 @@ App.ServiceConfigView = Em.View.extend({
     }
   }.property('controller.name', 'controller.selectedService'),
 
-  showConfigHistoryFeature: false,
-
   toggleRestartMessageView: function () {
     this.$('.service-body').toggle('blind', 200);
     this.set('isRestartMessageCollapsed', !this.get('isRestartMessageCollapsed'));
@@ -158,6 +162,7 @@ App.ServiceConfigView = Em.View.extend({
 
   setActiveTab: function (event) {
     if (event.context.get('isHiddenByFilter')) return false;
+    this.set('initalActiveTabIsSet', true);
     this.get('tabs').forEach(function (tab) {
       tab.set('isActive', false);
     });
@@ -182,9 +187,20 @@ App.ServiceConfigView = Em.View.extend({
       advancedTab.set('isRendered', false);
     }
     this.processTabs(tabs);
-    this.pickActiveTab(tabs);
     return tabs;
   }.property('controller.selectedServiceNameTrigger'),
+
+  /**
+   * Set active tab when view attached and configs are linked to tabs.
+   */
+  initialActiveTabObserver: function() {
+    var tabs = this.get('tabs').filterProperty('isAdvanced', false);
+    if (tabs.everyProperty('isConfigsPrepared', true) && !this.get('initalActiveTabIsSet')) {
+      this.get('tabs').setEach('isActive', false);
+      this.pickActiveTab(this.get('tabs'));
+      this.set('initalActiveTabIsSet', true);
+    }
+  }.observes('tabs.@each.isConfigsPrepared'),
 
   /**
    * Pick the first non hidden tab and make it active when there is no active tab

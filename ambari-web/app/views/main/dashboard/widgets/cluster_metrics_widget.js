@@ -18,8 +18,32 @@
 
 var App = require('app');
 
-App.ClusterMetricsDashboardWidgetView = App.DashboardWidgetView.extend({
+App.ClusterMetricsDashboardWidgetView = App.DashboardWidgetView.extend(App.ExportMetricsMixin, {
 
-  templateName: require('templates/main/dashboard/widgets/cluster_metrics')
+  templateName: require('templates/main/dashboard/widgets/cluster_metrics'),
+
+  didInsertElement: function () {
+    var self = this;
+    this.$().on('mouseleave', function () {
+      self.set('isExportMenuHidden', true);
+    });
+    App.tooltip(this.$('.corner-icon > .icon-save'), {
+      title: Em.I18n.t('common.export')
+    });
+  },
+
+  exportGraphData: function (event) {
+    this._super();
+    var ajaxIndex = this.get('childViews.lastObject.ajaxIndex');
+    App.ajax.send({
+      name: ajaxIndex,
+      data: $.extend(this.get('childViews.lastObject').getDataForAjaxRequest(), {
+        isCSV: !!event.context
+      }),
+      sender: this,
+      success: 'exportGraphDataSuccessCallback',
+      error: 'exportGraphDataErrorCallback'
+    });
+  }
 
 });

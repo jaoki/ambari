@@ -82,7 +82,7 @@ class Test(RMFTestCase):
                    hdp_stack_version = self.STACK_VERSION,
                    target = RMFTestCase.TARGET_COMMON_SERVICES)
 
-    self.assertResourceCalled("Execute", ('hdp-select', 'set', 'hadoop-client', '2.2.1.0-2067'), sudo=True)
+    self.assertResourceCalled("Execute", ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-client', '2.2.1.0-2067'), sudo=True)
 
     # for now, it's enough that hdp-select is confirmed
 
@@ -204,16 +204,16 @@ class Test(RMFTestCase):
                        call_mocks = [(0, None), (0, None)],
                        mocks_dict = mocks_dict)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hadoop-client', version), sudo=True,)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-client', version), sudo=True,)
     self.assertNoMoreResources()
 
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
 
   def test_pre_rolling_restart(self):
@@ -228,5 +228,5 @@ class Test(RMFTestCase):
                        config_dict = json_content,
                        hdp_stack_version = self.STACK_VERSION,
                        target = RMFTestCase.TARGET_COMMON_SERVICES)
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hadoop-client', version), sudo=True,)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-client', version), sudo=True,)
     self.assertNoMoreResources()

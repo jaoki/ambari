@@ -189,7 +189,7 @@ App.ClusterController = Em.Controller.extend(App.ReloadPopupMixin, {
       App.router.get('mainController').startPolling();
       return;
     }
-
+    App.router.get('userSettingsController').getAllUserSettings();
     var clusterUrl = this.getUrl('/data/clusters/cluster.json', '?fields=Clusters');
     var hostsController = App.router.get('mainHostController');
     hostsController.set('isCountersUpdating', true);
@@ -197,6 +197,7 @@ App.ClusterController = Em.Controller.extend(App.ReloadPopupMixin, {
 
     App.HttpClient.get(clusterUrl, App.clusterMapper, {
       complete: function (jqXHR, textStatus) {
+        App.set('isCredentialStorePersistent', Em.getWithDefault(App.Cluster.find().findProperty('clusterName', App.get('clusterName')), 'isCredentialStorePersistent', false));
       }
     }, function (jqXHR, textStatus) {
     });
@@ -249,6 +250,8 @@ App.ClusterController = Em.Controller.extend(App.ReloadPopupMixin, {
           // service metrics loading doesn't affect overall progress
           updater.updateServiceMetric(function () {
             self.set('isServiceMetricsLoaded', true);
+            // make second call, because first is light since it doesn't request host-component metrics
+            updater.updateServiceMetric(Em.K);
             // components config loading doesn't affect overall progress
             updater.updateComponentConfig(function () {
               self.set('isComponentsConfigLoaded', true);
@@ -368,6 +371,7 @@ App.ClusterController = Em.Controller.extend(App.ReloadPopupMixin, {
     this.set('ambariProperties', data.RootServiceComponents.properties);
     // Absence of 'jdk.name' and 'jce.name' properties says that ambari configured with custom jdk.
     this.set('isCustomJDK', App.isEmptyObject(App.permit(data.RootServiceComponents.properties, ['jdk.name', 'jce.name'])));
+    App.router.get('mainController').monitorInactivity();
   },
 
   loadAmbariPropertiesError: function () {

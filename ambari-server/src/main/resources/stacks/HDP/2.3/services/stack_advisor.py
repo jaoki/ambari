@@ -27,9 +27,11 @@ class HDP23StackAdvisor(HDP22StackAdvisor):
     childRecommendConfDict = {
       "TEZ": self.recommendTezConfigurations,
       "HDFS": self.recommendHDFSConfigurations,
+      "YARN": self.recommendYARNConfigurations,
       "HIVE": self.recommendHIVEConfigurations,
       "HBASE": self.recommendHBASEConfigurations,
       "KAFKA": self.recommendKAFKAConfigurations,
+      "RANGER": self.recommendRangerConfigurations
     }
     parentRecommendConfDict.update(childRecommendConfDict)
     return parentRecommendConfDict
@@ -181,7 +183,7 @@ class HDP23StackAdvisor(HDP22StackAdvisor):
 
     # if hive using sqla db, then we should add DataNucleus property
     sqla_db_used = 'hive-env' in services['configurations'] and 'hive_database' in services['configurations']['hive-env']['properties'] and \
-                   services['configurations']['hive-env']['properties']['hive_database'] == 'Existing SQLA Database'
+                   services['configurations']['hive-env']['properties']['hive_database'] == 'Existing SQL Anywhere Database'
     if sqla_db_used:
       putHiveSiteProperty('datanucleus.rdbms.datastoreAdapterClassName','org.datanucleus.store.rdbms.adapter.SQLAnywhereAdapter')
     else:
@@ -245,11 +247,110 @@ class HDP23StackAdvisor(HDP22StackAdvisor):
   def recommendKAFKAConfigurations(self, configurations, clusterData, services, hosts):
     putKafkaBrokerProperty = self.putProperty(configurations, "kafka-broker", services)
 
+    if "ranger-env" in services["configurations"] and "ranger-kafka-plugin-properties" in services["configurations"] and \
+        "ranger-kafka-plugin-enabled" in services["configurations"]["ranger-env"]["properties"]:
+      putKafkaRangerPluginProperty = self.putProperty(configurations, "ranger-kafka-plugin-properties", services)
+      rangerEnvKafkaPluginProperty = services["configurations"]["ranger-env"]["properties"]["ranger-kafka-plugin-enabled"]
+      putKafkaRangerPluginProperty("ranger-kafka-plugin-enabled", rangerEnvKafkaPluginProperty)
+
     servicesList = [service["StackServices"]["service_name"] for service in services["services"]]
     if 'ranger-kafka-plugin-properties' in services['configurations'] and ('ranger-kafka-plugin-enabled' in services['configurations']['ranger-kafka-plugin-properties']['properties']):
       rangerPluginEnabled = services['configurations']['ranger-kafka-plugin-properties']['properties']['ranger-kafka-plugin-enabled']
       if ("RANGER" in servicesList) and (rangerPluginEnabled.lower() == "Yes".lower()):
         putKafkaBrokerProperty("authorizer.class.name", 'org.apache.ranger.authorization.kafka.authorizer.RangerKafkaAuthorizer')
+
+  def recommendRangerConfigurations(self, configurations, clusterData, services, hosts):
+    super(HDP23StackAdvisor, self).recommendRangerConfigurations(configurations, clusterData, services, hosts)
+    servicesList = [service["StackServices"]["service_name"] for service in services["services"]]
+    putRangerAdminProperty = self.putProperty(configurations, "ranger-admin-site", services)
+    putRangerEnvProperty = self.putProperty(configurations, "ranger-env", services)
+
+    if 'admin-properties' in services['configurations'] and ('DB_FLAVOR' in services['configurations']['admin-properties']['properties'])\
+      and ('db_host' in services['configurations']['admin-properties']['properties']) and ('db_name' in services['configurations']['admin-properties']['properties']):
+
+      rangerDbFlavor = services['configurations']["admin-properties"]["properties"]["DB_FLAVOR"]
+      rangerDbHost =   services['configurations']["admin-properties"]["properties"]["db_host"]
+      rangerDbName =   services['configurations']["admin-properties"]["properties"]["db_name"]
+      ranger_db_url_dict = {
+        'MYSQL': {'ranger.jpa.jdbc.driver': 'com.mysql.jdbc.Driver', 'ranger.jpa.jdbc.url': 'jdbc:mysql://' + rangerDbHost + '/' + rangerDbName},
+        'ORACLE': {'ranger.jpa.jdbc.driver': 'oracle.jdbc.driver.OracleDriver', 'ranger.jpa.jdbc.url': 'jdbc:oracle:thin:@/' + rangerDbHost + ':1521/' + rangerDbName},
+        'POSTGRES': {'ranger.jpa.jdbc.driver': 'org.postgresql.Driver', 'ranger.jpa.jdbc.url': 'jdbc:postgresql://' + rangerDbHost + ':5432/' + rangerDbName},
+        'MSSQL': {'ranger.jpa.jdbc.driver': 'com.microsoft.sqlserver.jdbc.SQLServerDriver', 'ranger.jpa.jdbc.url': 'jdbc:sqlserver://' + rangerDbHost + ';databaseName=' + rangerDbName},
+        'SQLA': {'ranger.jpa.jdbc.driver': 'sap.jdbc4.sqlanywhere.IDriver', 'ranger.jpa.jdbc.url': 'jdbc:sqlanywhere:host=' + rangerDbHost + ';database=' + rangerDbName}
+      }
+      rangerDbProperties = ranger_db_url_dict.get(rangerDbFlavor, ranger_db_url_dict['MYSQL'])
+      for key in rangerDbProperties:
+        putRangerAdminProperty(key, rangerDbProperties.get(key))
+
+      if 'admin-properties' in services['configurations'] and ('DB_FLAVOR' in services['configurations']['admin-properties']['properties']) \
+        and ('db_host' in services['configurations']['admin-properties']['properties']):
+
+        rangerDbFlavor = services['configurations']["admin-properties"]["properties"]["DB_FLAVOR"]
+        rangerDbHost =   services['configurations']["admin-properties"]["properties"]["db_host"]
+        ranger_db_privelege_url_dict = {
+          'MYSQL': {'ranger_privelege_user_jdbc_url': 'jdbc:mysql://' + rangerDbHost},
+          'ORACLE': {'ranger_privelege_user_jdbc_url': 'jdbc:oracle:thin:@/' + rangerDbHost + ':1521'},
+          'POSTGRES': {'ranger_privelege_user_jdbc_url': 'jdbc:postgresql://' + rangerDbHost + ':5432'},
+          'MSSQL': {'ranger_privelege_user_jdbc_url': 'jdbc:sqlserver://' + rangerDbHost + ';'},
+          'SQLA': {'ranger_privelege_user_jdbc_url': 'jdbc:sqlanywhere:host=' + rangerDbHost + ';'}
+        }
+        rangerPrivelegeDbProperties = ranger_db_privelege_url_dict.get(rangerDbFlavor, ranger_db_privelege_url_dict['MYSQL'])
+        for key in rangerPrivelegeDbProperties:
+          putRangerEnvProperty(key, rangerPrivelegeDbProperties.get(key))
+
+    # Recommend ranger.audit.solr.zookeepers and xasecure.audit.destination.hdfs.dir
+    include_hdfs = "HDFS" in servicesList
+    zookeeper_host_port = self.getZKHostPortString(services)
+    if zookeeper_host_port:
+      putRangerAdminProperty('ranger.audit.solr.zookeepers', zookeeper_host_port)
+
+    if include_hdfs:
+      if 'core-site' in services['configurations'] and ('fs.defaultFS' in services['configurations']['core-site']['properties']):
+        default_fs = services['configurations']['core-site']['properties']['fs.defaultFS']
+        putRangerEnvProperty('xasecure.audit.destination.hdfs.dir', default_fs)
+
+    # Recommend Ranger supported service's audit properties
+    ranger_services = [
+      {'service_name': 'HDFS', 'audit_file': 'ranger-hdfs-audit'},
+      {'service_name': 'YARN', 'audit_file': 'ranger-yarn-audit'},
+      {'service_name': 'HBASE', 'audit_file': 'ranger-hbase-audit'},
+      {'service_name': 'HIVE', 'audit_file': 'ranger-hive-audit'},
+      {'service_name': 'KNOX', 'audit_file': 'ranger-knox-audit'},
+      {'service_name': 'KAFKA', 'audit_file': 'ranger-kafka-audit'},
+      {'service_name': 'STORM', 'audit_file': 'ranger-storm-audit'}
+    ]
+
+    for item in range(len(ranger_services)):
+      if ranger_services[item]['service_name'] in servicesList:
+        component_audit_file =  ranger_services[item]['audit_file']
+        if component_audit_file in services["configurations"]:
+          ranger_audit_dict = [
+            {'filename': 'ranger-env', 'configname': 'xasecure.audit.destination.db', 'target_configname': 'xasecure.audit.destination.db'},
+            {'filename': 'ranger-env', 'configname': 'xasecure.audit.destination.hdfs', 'target_configname': 'xasecure.audit.destination.hdfs'},
+            {'filename': 'ranger-env', 'configname': 'xasecure.audit.destination.hdfs.dir', 'target_configname': 'xasecure.audit.destination.hdfs.dir'},
+            {'filename': 'ranger-env', 'configname': 'xasecure.audit.destination.solr', 'target_configname': 'xasecure.audit.destination.solr'},
+            {'filename': 'ranger-admin-site', 'configname': 'ranger.audit.solr.urls', 'target_configname': 'xasecure.audit.destination.solr.urls'},
+            {'filename': 'ranger-admin-site', 'configname': 'ranger.audit.solr.zookeepers', 'target_configname': 'xasecure.audit.destination.solr.zookeepers'}
+          ]
+          putRangerAuditProperty = self.putProperty(configurations, component_audit_file, services)
+
+          for item in ranger_audit_dict:
+            if item['filename'] in services["configurations"] and item['configname'] in  services["configurations"][item['filename']]["properties"]:
+              if item['filename'] in configurations and item['configname'] in  configurations[item['filename']]["properties"]:
+                rangerAuditProperty = configurations[item['filename']]["properties"][item['configname']]
+              else:
+                rangerAuditProperty = services["configurations"][item['filename']]["properties"][item['configname']]
+              putRangerAuditProperty(item['target_configname'], rangerAuditProperty)
+
+
+
+  def recommendYARNConfigurations(self, configurations, clusterData, services, hosts):
+    super(HDP23StackAdvisor, self).recommendYARNConfigurations(configurations, clusterData, services, hosts)
+    if "ranger-env" in services["configurations"] and "ranger-yarn-plugin-properties" in services["configurations"] and \
+        "ranger-yarn-plugin-enabled" in services["configurations"]["ranger-env"]["properties"]:
+      putYarnRangerPluginProperty = self.putProperty(configurations, "ranger-yarn-plugin-properties", services)
+      rangerEnvYarnPluginProperty = services["configurations"]["ranger-env"]["properties"]["ranger-yarn-plugin-enabled"]
+      putYarnRangerPluginProperty("ranger-yarn-plugin-enabled", rangerEnvYarnPluginProperty)
 
   def getServiceConfigurationValidators(self):
       parentValidators = super(HDP23StackAdvisor, self).getServiceConfigurationValidators()
@@ -287,19 +388,19 @@ class HDP23StackAdvisor(HDP22StackAdvisor):
     hive_env_properties = getSiteProperties(configurations, "hive-env")
     validationItems = []
     sqla_db_used = "hive_database" in hive_env_properties and \
-                   hive_env_properties['hive_database'] == 'Existing SQLA Database'
+                   hive_env_properties['hive_database'] == 'Existing SQL Anywhere Database'
     prop_name = "datanucleus.rdbms.datastoreAdapterClassName"
     prop_value = "org.datanucleus.store.rdbms.adapter.SQLAnywhereAdapter"
     if sqla_db_used:
       if not prop_name in hive_site:
         validationItems.append({"config-name": prop_name,
                               "item": self.getWarnItem(
-                              "If Hive using SQLA db." \
+                              "If Hive using SQL Anywhere db." \
                               " {0} needs to be added with value {1}".format(prop_name,prop_value))})
       elif prop_name in hive_site and hive_site[prop_name] != "org.datanucleus.store.rdbms.adapter.SQLAnywhereAdapter":
         validationItems.append({"config-name": prop_name,
                                 "item": self.getWarnItem(
-                                  "If Hive using SQLA db." \
+                                  "If Hive using SQL Anywhere db." \
                                   " {0} needs to be set to {1}".format(prop_name,prop_value))})
     return self.toConfigurationValidationProblems(validationItems, "hive-site")
 
@@ -323,14 +424,21 @@ class HDP23StackAdvisor(HDP22StackAdvisor):
           validationItems.append({"config-name": prop_name,
                                   "item": self.getWarnItem(
                                   "If Ranger Hive Plugin is enabled."\
-                                  " {0} needs to be set to {1}".format(prop_name,prop_val))})
+                                  " {0} under hiveserver2-site needs to be set to {1}".format(prop_name,prop_val))})
         prop_name = 'hive.security.authenticator.manager'
         prop_val = "org.apache.hadoop.hive.ql.security.SessionStateUserAuthenticator"
         if prop_name in hive_server2 and hive_server2[prop_name] != prop_val:
           validationItems.append({"config-name": prop_name,
                                   "item": self.getWarnItem(
                                   "If Ranger Hive Plugin is enabled."\
-                                  " {0} needs to be set to {1}".format(prop_name,prop_val))})
+                                  " {0} under hiveserver2-site needs to be set to {1}".format(prop_name,prop_val))})
+        prop_name = 'hive.security.authorization.enabled'
+        prop_val = 'true'
+        if prop_name in hive_server2 and hive_server2[prop_name] != prop_val:
+          validationItems.append({"config-name": prop_name,
+                                  "item": self.getWarnItem(
+                                  "If Ranger Hive Plugin is enabled."\
+                                  " {0} under hiveserver2-site needs to be set to {1}".format(prop_name, prop_val))})
       ##Add stack validations for  Ranger plugin disabled.
       elif not ranger_plugin_enabled:
         prop_name = 'hive.security.authorization.manager'

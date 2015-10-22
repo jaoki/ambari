@@ -63,7 +63,9 @@ class TestSparkClient(RMFTestCase):
         recursive = True,
     )
     self.assertResourceCalled('PropertiesFile', '/usr/hdp/current/spark-client/conf/spark-defaults.conf',
+        owner = 'spark',
         key_value_delimiter = ' ',
+        group = 'spark',
         properties = self.getConfig()['configurations']['spark-defaults'],
     )
     self.assertResourceCalled('File', '/usr/hdp/current/spark-client/conf/spark-env.sh',
@@ -99,7 +101,9 @@ class TestSparkClient(RMFTestCase):
         recursive = True,
     )
     self.assertResourceCalled('PropertiesFile', '/usr/hdp/current/spark-client/conf/spark-defaults.conf',
+        owner = 'spark',
         key_value_delimiter = ' ',
+        group = 'spark',
         properties = self.getConfig()['configurations']['spark-defaults'],
     )
     self.assertResourceCalled('File', '/usr/hdp/current/spark-client/conf/spark-env.sh',
@@ -140,14 +144,14 @@ class TestSparkClient(RMFTestCase):
                        call_mocks = [(0, None), (0, None)],
                        mocks_dict = mocks_dict)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'spark-client', version), sudo=True)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'spark-client', version), sudo=True)
     self.assertNoMoreResources()
 
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'spark', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'spark', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'spark', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'spark', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])

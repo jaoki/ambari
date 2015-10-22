@@ -12,7 +12,7 @@
   <parent>
     <groupId>org.apache.ambari</groupId>
     <artifactId>ambari-project</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.0.0.0-SNAPSHOT</version>
     <relativePath>../ambari-project</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -20,7 +20,7 @@
   <artifactId>ambari-server</artifactId>
   <packaging>${packagingFormat}</packaging>
   <name>Ambari Server</name>
-  <version>2.0.0-SNAPSHOT</version>
+  <version>2.0.0.0-SNAPSHOT</version>
   <description>Ambari Server</description>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -70,8 +70,8 @@
             <configuration>
               <name>ambariVersion</name>
               <value>${project.version}</value>
-              <regex>^([0-9]+)\.([0-9]+)\.([0-9]+)(\.|-).*</regex>
-              <replacement>$1.$2.$3</replacement>
+              <regex>^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)(\.|-).*</regex>
+              <replacement>$1.$2.$3.$4</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
           </execution>
@@ -202,6 +202,9 @@
             <!-- Stack definitions -->
             <exclude>src/main/resources/stacks/HDP/2.0._/services/HBASE/package/templates/regionservers.j2</exclude>
             <exclude>src/main/resources/stacks/HDPWIN/2.1/services/*/configuration*/*</exclude>
+
+            <!-- HAWQ Stack definitions -->
+            <exclude>src/main/resources/common-services/HAWQ/2.0.0.0/package/templates/*.j2</exclude>
 
             <!--test samples -->
             <exclude>src/test/resources/TestAmbaryServer.samples/**</exclude>
@@ -1884,7 +1887,7 @@
     <dependency>
       <groupId>org.easymock</groupId>
       <artifactId>easymock</artifactId>
-      <version>3.1</version>
+      <version>3.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -1910,6 +1913,12 @@
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-api-mockito</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>nl.jqno.equalsverifier</groupId>
+      <artifactId>equalsverifier</artifactId>
+      <version>1.7.4</version>
       <scope>test</scope>
     </dependency>
     <dependency>

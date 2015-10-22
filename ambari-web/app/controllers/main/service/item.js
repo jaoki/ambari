@@ -18,9 +18,8 @@
 
 var App = require('app');
 var batchUtils = require('utils/batch_scheduled_requests');
-var componentsUtils = require('utils/components');
 
-App.MainServiceItemController = Em.Controller.extend({
+App.MainServiceItemController = Em.Controller.extend(App.SupportClientConfigsDownload, App.InstallComponent, {
   name: 'mainServiceItemController',
 
   /**
@@ -134,7 +133,7 @@ App.MainServiceItemController = Em.Controller.extend({
         }, App.get('testModeDelayForActions'));
       }
       // load data (if we need to show this background operations popup) from persist
-      App.router.get('applicationController').dataLoading().done(function (initValue) {
+      App.router.get('userSettingsController').dataLoading('show_bg').done(function (initValue) {
         if (initValue) {
           App.router.get('backgroundOperationsController').showPopup();
         }
@@ -202,8 +201,8 @@ App.MainServiceItemController = Em.Controller.extend({
         // too old
         self.getHdfsUser().done(function() {
           var msg = Em.Object.create({
-            confirmMsg: Em.I18n.t('services.service.stop.HDFS.warningMsg.checkPointTooOld') +
-              Em.I18n.t('services.service.stop.HDFS.warningMsg.checkPointTooOld.instructions').format(isNNCheckpointTooOld, self.get('content.hdfsUser')),
+            confirmMsg: Em.I18n.t('services.service.stop.HDFS.warningMsg.checkPointTooOld').format(App.nnCheckpointAgeAlertThreshold) +
+              Em.I18n.t('services.service.stop.HDFS.warningMsg.checkPointTooOld.instructions').format(isNNCheckpointTooOld, self.get('hdfsUser')),
             confirmButton: Em.I18n.t('common.next')
           });
           return App.showConfirmationFeedBackPopup(callback, msg);
@@ -261,7 +260,7 @@ App.MainServiceItemController = Em.Controller.extend({
     if (!lastCheckpointTime) {
       this.set("isNNCheckpointTooOld", null);
     } else {
-      var time_criteria = 12; // time in hours to define how many hours ago is too old
+      var time_criteria = App.nnCheckpointAgeAlertThreshold; // time in hours to define how many hours ago is too old
       var time_ago = (Math.round(App.dateTime() / 1000) - (time_criteria * 3600)) *1000;
       if (lastCheckpointTime <= time_ago) {
         // too old, set the effected hostName
@@ -283,7 +282,7 @@ App.MainServiceItemController = Em.Controller.extend({
     miscController.loadUsers();
     var interval = setInterval(function () {
       if (miscController.get('dataIsLoaded') && miscController.get('users')) {
-        self.set('content.hdfsUser', miscController.get('users').findProperty('name', 'hdfs_user').get('value'));
+        self.set('hdfsUser', miscController.get('users').findProperty('name', 'hdfs_user').get('value'));
         dfd.resolve();
         clearInterval(interval);
       }
@@ -402,7 +401,7 @@ App.MainServiceItemController = Em.Controller.extend({
     return App.showConfirmationPopup(function() {
       self.set("content.runRebalancer", true);
       // load data (if we need to show this background operations popup) from persist
-      App.router.get('applicationController').dataLoading().done(function (initValue) {
+      App.router.get('userSettingsController').dataLoading('show_bg').done(function (initValue) {
         if (initValue) {
           App.router.get('backgroundOperationsController').showPopup();
         }
@@ -577,7 +576,7 @@ App.MainServiceItemController = Em.Controller.extend({
     return App.showConfirmationPopup(function() {
       self.set("content.runCompaction", true);
       // load data (if we need to show this background operations popup) from persist
-      App.router.get('applicationController').dataLoading().done(function (initValue) {
+      App.router.get('userSettingsController').dataLoading('show_bg').done(function (initValue) {
         if (initValue) {
           App.router.get('backgroundOperationsController').showPopup();
         }
@@ -614,12 +613,12 @@ App.MainServiceItemController = Em.Controller.extend({
       this.get('content.hostComponents').filterProperty('componentName', 'NAMENODE').someProperty('workStatus', App.HostComponentStatus.started)) {
       this.checkNnLastCheckpointTime(function () {
         return App.showConfirmationFeedBackPopup(function(query, runMmOperation) {
-          batchUtils.restartAllServiceHostComponents(serviceName, false, query, runMmOperation);
+          batchUtils.restartAllServiceHostComponents(serviceDisplayName, serviceName, false, query, runMmOperation);
         }, bodyMessage);
       });
     } else {
       return App.showConfirmationFeedBackPopup(function(query, runMmOperation) {
-        batchUtils.restartAllServiceHostComponents(serviceName, false, query, runMmOperation);
+        batchUtils.restartAllServiceHostComponents(serviceDisplayName, serviceName, false, query, runMmOperation);
       }, bodyMessage);
     }
   },
@@ -667,7 +666,7 @@ App.MainServiceItemController = Em.Controller.extend({
   runSmokeTestSuccessCallBack: function (data, ajaxOptions, params) {
     if (data.Requests.id) {
       // load data (if we need to show this background operations popup) from persist
-      App.router.get('applicationController').dataLoading().done(function (initValue) {
+      App.router.get('userSettingsController').dataLoading('show_bg').done(function (initValue) {
         params.query.set('status', 'SUCCESS');
         if (initValue) {
           App.router.get('backgroundOperationsController').showPopup();
@@ -801,14 +800,14 @@ App.MainServiceItemController = Em.Controller.extend({
 
         // Install
         if(['HIVE_METASTORE', 'RANGER_KMS_SERVER', 'NIMBUS'].contains(component.get('componentName')) && !!selectedHost){
-          App.router.get('mainHostDetailsController').addComponent(
+          App.router.get('mainHostDetailsController').addComponentWithCheck(
             {
               context: component,
               selectedHost: selectedHost
             }
           );
         } else {
-          componentsUtils.installHostComponent(selectedHost, component);
+          self.installHostComponentCall(selectedHost, component);
         }
 
         // Remove host from 'without' collection to immediate recalculate add menu item state
@@ -888,7 +887,7 @@ App.MainServiceItemController = Em.Controller.extend({
 
   downloadClientConfigs: function (event) {
     var component = this.get('content.clientComponents').rejectProperty('totalCount', 0)[0];
-    componentsUtils.downloadClientConfigs.call(this, {
+    this.downloadClientConfigsCall({
       serviceName: this.get('content.serviceName'),
       componentName: (event && event.name) || component.get('componentName'),
       displayName: (event && event.label) || component.get('displayName')

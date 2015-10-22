@@ -21,7 +21,7 @@ var misc = require('utils/misc');
 require('views/main/service/service');
 require('data/service_graph_config');
 
-App.MainServiceInfoSummaryView = Em.View.extend(App.UserPref, {
+App.MainServiceInfoSummaryView = Em.View.extend(App.UserPref, App.TimeRangeMixin, {
   templateName: require('templates/main/service/info/summary'),
   /**
    * @property {Number} chunkSize - number of columns in Metrics section
@@ -348,13 +348,13 @@ App.MainServiceInfoSummaryView = Em.View.extend(App.UserPref, {
       App.router.get('mainServiceItemController').checkNnLastCheckpointTime(function () {
         return App.showConfirmationFeedBackPopup(function (query) {
           var selectedService = self.get('service.id');
-          batchUtils.restartAllServiceHostComponents(selectedService, true, query);
+          batchUtils.restartAllServiceHostComponents(serviceDisplayName, selectedService, true, query);
         }, bodyMessage);
       });
     } else {
       return App.showConfirmationFeedBackPopup(function (query) {
         var selectedService = self.get('service.id');
-        batchUtils.restartAllServiceHostComponents(selectedService, true, query);
+        batchUtils.restartAllServiceHostComponents(serviceDisplayName, selectedService, true, query);
       }, bodyMessage);
     }
   },
@@ -499,31 +499,11 @@ App.MainServiceInfoSummaryView = Em.View.extend(App.UserPref, {
   },
 
   /**
-   * time range options for service metrics, a dropdown will list all options
-   * value set in hours
-   */
-  timeRangeOptions: [
-    {index: 0, name: Em.I18n.t('graphs.timeRange.hour'), value: '1'},
-    {index: 1, name: Em.I18n.t('graphs.timeRange.twoHours'), value: '2'},
-    {index: 2, name: Em.I18n.t('graphs.timeRange.fourHours'), value: '4'},
-    {index: 3, name: Em.I18n.t('graphs.timeRange.twelveHours'), value: '12'},
-    {index: 4, name: Em.I18n.t('graphs.timeRange.day'), value: '24'},
-    {index: 5, name: Em.I18n.t('graphs.timeRange.week'), value: '168'},
-    {index: 6, name: Em.I18n.t('graphs.timeRange.month'), value: '720'},
-    {index: 7, name: Em.I18n.t('graphs.timeRange.year'), value: '8760'}
-  ],
-
-  currentTimeRangeIndex: 0,
-  currentTimeRange: function() {
-    return this.get('timeRangeOptions').objectAt(this.get('currentTimeRangeIndex'));
-  }.property('currentTimeRangeIndex'),
-
-  /**
    * onclick handler for a time range option
    * @param {object} event
    */
   setTimeRange: function (event) {
-    this.set('currentTimeRangeIndex', event.context.index);
+    this._super(event);
 
     this.get('controller.widgets').filterProperty('widgetType', 'GRAPH').forEach(function (widget) {
       widget.set('properties.time_range', event.context.value);
@@ -564,25 +544,6 @@ App.MainServiceInfoSummaryView = Em.View.extend(App.UserPref, {
   isNoServiceMetricsService: function() {
     return !App.get('services.serviceMetrics').length;
   }.property('App.services.serviceMetrics'),
-
-  gangliaUrl:function () {
-    var gangliaUrl = App.router.get('clusterController.gangliaUrl');
-    if (!gangliaUrl) return null;
-    var svcName = this.get('service.serviceName');
-    if (svcName) {
-      switch (svcName.toLowerCase()) {
-        case 'hdfs':
-          gangliaUrl += "/?r=hour&cs=&ce=&m=&s=by+name&c=HDPSlaves&tab=m&vn=";
-          break;
-        case 'hbase':
-          gangliaUrl += "?r=hour&cs=&ce=&m=&s=by+name&c=HDPHBaseMaster&tab=m&vn=";
-          break;
-        default:
-          break;
-      }
-    }
-    return gangliaUrl;
-  }.property('App.router.clusterController.gangliaUrl', 'service.serviceName'),
 
   didInsertElement: function () {
     var svcName = this.get('controller.content.serviceName');

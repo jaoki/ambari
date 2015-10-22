@@ -101,10 +101,10 @@ describe('App.InstallerStep7Controller', function () {
   beforeEach(function () {
     sinon.stub(App.config, 'setPreDefinedServiceConfigs', Em.K);
     installerStep7Controller = App.WizardStep7Controller.create({
-      content: {
+      content: Em.Object.create({
         advancedServiceConfig: [],
         serviceConfigProperties: []
-      }
+      })
     });
     sinon.stub(console, 'error', Em.K);
   });
@@ -324,9 +324,18 @@ describe('App.InstallerStep7Controller', function () {
   });
 
   describe('#submit', function () {
-    it('should return undefined if submit disabled', function () {
+
+    beforeEach(function () {
+      sinon.stub(App, 'get').withArgs('supports.preInstallChecks').returns(false);
+    });
+
+    afterEach(function () {
+      App.get.restore();
+    });
+
+    it('should return false if submit disabled', function () {
       installerStep7Controller.set('isSubmitDisabled',true);
-      expect(installerStep7Controller.submit()).to.be.undefined;
+      expect(installerStep7Controller.submit()).to.be.false;
     });
     it('sumbit button should be unclicked if no configs', function () {
       installerStep7Controller.set('isSubmitDisabled',false);
@@ -1145,15 +1154,15 @@ describe('App.InstallerStep7Controller', function () {
     });
 
     afterEach(function () {
-      App.config.renderConfigs.restore();
+      installerStep7Controller.renderConfigs.restore();
     });
 
-    it('if wizard isn\'t addService, should set output of App.config.renderConfigs', function () {
+    it('if wizard isn\'t addService, should set output of installerStep7Controller.renderConfigs', function () {
       var serviceConfigs = Em.A([
         {serviceName:'HDFS', configs: []},
         {}
       ]);
-      sinon.stub(App.config, 'renderConfigs', function () {
+      sinon.stub(installerStep7Controller, 'renderConfigs', function () {
         return serviceConfigs;
       });
       installerStep7Controller.set('wizardController.name', 'installerController');
@@ -1165,7 +1174,7 @@ describe('App.InstallerStep7Controller', function () {
       var serviceConfigs = Em.A([Em.Object.create({serviceName: 'HDFS', configs: []}), Em.Object.create({serviceName: 's2'})]);
       installerStep7Controller.set('wizardController.name', 'addServiceController');
       installerStep7Controller.reopen({selectedServiceNames: ['s2']});
-      sinon.stub(App.config, 'renderConfigs', function () {
+      sinon.stub(installerStep7Controller, 'renderConfigs', function () {
         return serviceConfigs;
       });
       installerStep7Controller.setStepConfigs([], []);
@@ -1195,7 +1204,7 @@ describe('App.InstallerStep7Controller', function () {
       );
       installerStep7Controller.set('wizardController.name', 'addServiceController');
       installerStep7Controller.reopen({selectedServiceNames: ['HDFS', 's2']});
-      sinon.stub(App.config, 'renderConfigs', function () {
+      sinon.stub(installerStep7Controller, 'renderConfigs', function () {
         return serviceConfigs;
       });
       installerStep7Controller.setStepConfigs([], []);
@@ -1223,7 +1232,7 @@ describe('App.InstallerStep7Controller', function () {
       );
 
       installerStep7Controller.reopen({selectedServiceNames: ['HDFS', 's2']});
-      sinon.stub(App.config, 'renderConfigs', function () {
+      sinon.stub(installerStep7Controller, 'renderConfigs', function () {
         return serviceConfigs;
       });
       installerStep7Controller.setStepConfigs([], []);
@@ -1253,7 +1262,7 @@ describe('App.InstallerStep7Controller', function () {
 
       installerStep7Controller.reopen({selectedServiceNames: ['HDFS', 's2']});
       installerStep7Controller.set('installedServiceNames',['HDFS', 's2', 's3']);
-      sinon.stub(App.config, 'renderConfigs', function () {
+      sinon.stub(installerStep7Controller, 'renderConfigs', function () {
         return serviceConfigs;
       });
       installerStep7Controller.setStepConfigs([], []);
@@ -1663,7 +1672,7 @@ describe('App.InstallerStep7Controller', function () {
             serviceName: 'HIVE',
             configs: [
               {
-                name: 'hive_ambari_host',
+                name: 'hive_hostname',
                 value: 'h0'
               }
             ]
@@ -2043,4 +2052,135 @@ describe('App.InstallerStep7Controller', function () {
       });
     });
   });
+
+  describe('#addHostNamesToConfigs', function() {
+
+    beforeEach(function () {
+      sinon.stub(App.StackServiceComponent, 'find', function () {
+        return Em.Object.create({
+          id: 'NAMENODE',
+          displayName: 'NameNode'
+        });
+      });
+    });
+
+    afterEach(function () {
+      App.StackServiceComponent.find.restore();
+    });
+
+    it('should not create duplicate configs', function () {
+      var serviceConfig = Em.Object.create({
+        configs: [],
+        serviceName: 'HDFS',
+        configCategories: [
+          {
+            showHost: true,
+            name: 'NAMENODE'
+          }
+        ]
+      });
+      var masterComponents = [
+        {component: 'NAMENODE', hostName: 'h1'}
+      ];
+      var slaveComponents = [];
+      installerStep7Controller.addHostNamesToConfigs(serviceConfig, masterComponents, slaveComponents);
+      expect(serviceConfig.get('configs').filterProperty('name', 'namenode_host').length).to.equal(1);
+      installerStep7Controller.addHostNamesToConfigs(serviceConfig, masterComponents, slaveComponents);
+      expect(serviceConfig.get('configs').filterProperty('name', 'namenode_host').length).to.equal(1);
+    });
+
+  });
+
+  describe('#resolveHiveMysqlDatabase', function () {
+
+    beforeEach(function () {
+      installerStep7Controller.get('content').setProperties({
+        services: Em.A([
+          Em.Object.create({serviceName: 'HIVE', isSelected: true, isInstalled: false})
+        ])
+      });
+      installerStep7Controller.setProperties({
+        stepConfigs: Em.A([
+          Em.Object.create({serviceName: 'HIVE', configs: [{name: 'hive_database', value: 'New MySQL Database'}]})
+        ]),
+        mySQLServerConflict: true
+      });
+      sinon.stub(installerStep7Controller, 'moveNext', Em.K);
+      sinon.stub(installerStep7Controller, 'checkMySQLHost', function () {
+        return $.Deferred().resolve();
+      });
+      sinon.spy(App.ModalPopup, 'show');
+    });
+
+    afterEach(function () {
+      installerStep7Controller.moveNext.restore();
+      installerStep7Controller.checkMySQLHost.restore();
+
+      App.ModalPopup.show.restore();
+    });
+
+    it('no HIVE service', function () {
+      installerStep7Controller.set('content.services', Em.A([]));
+      installerStep7Controller.resolveHiveMysqlDatabase();
+      expect(installerStep7Controller.moveNext.calledOnce).to.be.true;
+      expect(App.ModalPopup.show.called).to.be.false;
+    });
+
+    it('if mySQLServerConflict, popup is shown', function () {
+      installerStep7Controller.resolveHiveMysqlDatabase();
+      expect(installerStep7Controller.moveNext.called).to.be.false;
+      expect(App.ModalPopup.show.calledOnce).to.be.true;
+    });
+
+  });
+
+  describe('#mySQLWarningHandler', function () {
+
+    beforeEach(function () {
+      installerStep7Controller.set('mySQLServerConflict', true);
+      sinon.spy(App.ModalPopup, 'show');
+      sinon.stub(App.router, 'get').returns({gotoStep: Em.K});
+      sinon.stub(App.router.get(), 'gotoStep', Em.K);
+    });
+
+    afterEach(function () {
+      App.ModalPopup.show.restore();
+      App.router.get().gotoStep.restore();
+      App.router.get.restore();
+    });
+
+    it('warning popup is shown', function () {
+      installerStep7Controller.mySQLWarningHandler();
+      expect(App.ModalPopup.show.calledOnce).to.be.true;
+    });
+
+    it('submitButtonClicked is set to false on primary click', function () {
+      installerStep7Controller.mySQLWarningHandler().onPrimary();
+      expect(installerStep7Controller.get('submitButtonClicked')).to.be.false;
+    });
+
+    it('second popup is shown on secondary click', function () {
+      installerStep7Controller.mySQLWarningHandler().onSecondary();
+      expect(App.ModalPopup.show.calledTwice).to.be.true;
+    });
+
+    it('submitButtonClicked is set to false on secondary click on the second popup', function () {
+      installerStep7Controller.mySQLWarningHandler().onSecondary().onSecondary();
+      expect(installerStep7Controller.get('submitButtonClicked')).to.be.false;
+    });
+
+    it('user is moved to step5 on primary click on the second popup (installerController)', function () {
+      installerStep7Controller.set('content.controllerName', 'installerController');
+      installerStep7Controller.mySQLWarningHandler().onSecondary().onPrimary();
+      expect(App.router.get('installerController').gotoStep.calledWith(5, true)).to.be.true;
+    });
+
+    it('user is moved to step2 on primary click on the second popup (addSeviceController)', function () {
+      installerStep7Controller.set('content.controllerName', 'addServiceController');
+      installerStep7Controller.mySQLWarningHandler().onSecondary().onPrimary();
+      expect(App.router.get('addSeviceController').gotoStep.calledWith(2, true)).to.be.true;
+    });
+
+  });
+
 });

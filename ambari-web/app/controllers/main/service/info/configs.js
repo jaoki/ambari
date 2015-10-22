@@ -119,13 +119,11 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
   canEdit: function () {
     return (this.get('selectedVersion') == this.get('currentDefaultVersion') || !this.get('selectedConfigGroup.isDefault'))
         && !this.get('isCompareMode') && App.isAccessible('MANAGER') && !this.get('isHostsConfigsPage');
-  }.property('selectedVersion', 'isCompareMode', 'currentDefaultVersion'),
+  }.property('selectedVersion', 'isCompareMode', 'currentDefaultVersion', 'selectedConfigGroup.isDefault'),
 
   serviceConfigs: function () {
     return App.config.get('preDefinedServiceConfigs');
   }.property('App.config.preDefinedServiceConfigs'),
-
-  showConfigHistoryFeature: true,
 
   /**
    * Number of errors in the configs in the selected service (only for AdvancedTab if App supports Enhanced Configs)
@@ -137,7 +135,7 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
     }).filter(function(config) {
       return !config.get('isValid') || (config.get('overrides') || []).someProperty('isValid', false);
     }).filterProperty('isVisible').length;
-  }.property('selectedService.configs.@each.isValid', 'selectedService.configs.@each.overrideErrorTrigger'),
+  }.property('selectedService.configs.@each.isValid', 'selectedService.configs.@each.isVisible', 'selectedService.configs.@each.overrideErrorTrigger'),
 
   /**
    * Determines if Save-button should be disabled
@@ -304,16 +302,17 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
    * @method loadStep
    */
   loadStep: function () {
+    var self = this;
     var serviceName = this.get('content.serviceName');
     this.clearStep();
     this.set('dependentServiceNames', App.StackService.find(serviceName).get('dependentServiceNames'));
     if (App.get('isClusterSupportsEnhancedConfigs')) {
       this.loadConfigTheme(serviceName).always(function() {
         App.themesMapper.generateAdvancedTabs([serviceName]);
+        // Theme mapper has UI only configs that needs to be merged with current service version configs
+        // This requires calling  `loadCurrentVersions` after theme has loaded
+        self.loadCurrentVersions();
       });
-    }
-    if (!this.get('preSelectedConfigVersion')) {
-      this.loadCurrentVersions();
     }
     this.loadServiceConfigVersions();
   },
@@ -389,7 +388,6 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
 
     this.set('allConfigs', configs);
     //add configs as names of host components
-    this.addHostNamesToConfig();
     this.addDBProperties(configs);
   },
 
@@ -449,10 +447,9 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
           for (var prop in config.properties) {
             var fileName = App.config.getOriginalFileName(config.type);
             var serviceConfig = allConfigs.filterProperty('name', prop).findProperty('filename', fileName);
-            var value = App.config.formatPropertyValue(serviceConfig, config.properties[prop]);
-            var isFinal = !!(config.properties_attributes && config.properties_attributes.final && config.properties_attributes.final[prop]);
-
             if (serviceConfig) {
+              var value = App.config.formatPropertyValue(serviceConfig, config.properties[prop]);
+              var isFinal = !!(config.properties_attributes && config.properties_attributes.final && config.properties_attributes.final[prop]);
               if (self.get('selectedConfigGroup.isDefault') || configGroup.get('name') == self.get('selectedConfigGroup.name')) {
                 var overridePlainObject = {
                   "value": value,
@@ -484,12 +481,11 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
       var serviceNames = [ serviceName ];
       if(serviceName === 'OOZIE') {
         // For Oozie, also add ELService properties which are marked as FALCON properties.
-        serviceNames.push('FALCON')
+        serviceNames.push('FALCON');
       }
       var configsByService = this.get('allConfigs').filter(function (c) {
         return serviceNames.contains(c.get('serviceName'));
       });
-      //databaseUtils.bootstrapDatabaseProperties(configsByService, serviceName);
       var serviceConfig = App.config.createServiceConfig(serviceName, configGroups, configsByService, configsByService.length);
       if (serviceConfig.get('serviceName') === 'HDFS') {
         if (App.get('isHaEnabled')) {
@@ -499,7 +495,7 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
           serviceConfig.configs = c;
         }
       }
-
+      this.addHostNamesToConfigs(serviceConfig);
       this.get('stepConfigs').pushObject(serviceConfig);
     }, this);
 
@@ -577,62 +573,18 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
   },
 
   /**
-   * Adds host name of master component to config
-   * @private
-   * @method addHostNamesToGlobalConfig
+   *
+   * @param serviceConfig
    */
-  addHostNamesToConfig: function () {
-    var serviceName = this.get('content.serviceName');
-    var hostComponentMapping = require('data/host_component_mapping');
-    //namenode_host is required to derive "fs.default.name" a property of core-site
-    try {
-      this.setHostForService('HDFS', 'NAMENODE', 'namenode_host', true);
-    } catch (err) {
-      console.log("No NameNode Host available.  This is expected if you're using GLUSTERFS rather than HDFS.");
-    }
-
-    var hostProperties = hostComponentMapping.filter(function (h) {
-      return h.serviceUseThis.contains(serviceName) || h.serviceName == serviceName;
-    });
-    hostProperties.forEach(function (h) {
-      this.setHostForService(h.serviceName, h.componentName, h.hostProperty, h.m);
+  addHostNamesToConfigs: function(serviceConfig) {
+    serviceConfig.get('configCategories').forEach(function(c) {
+      if (c.showHost) {
+        var stackComponent = App.StackServiceComponent.find(c.name);
+        var component = stackComponent.get('isMaster') ? App.MasterComponent.find(c.name) : App.SlaveComponent.find(c.name);
+        var hProperty = App.config.createHostNameProperty(serviceConfig.get('serviceName'), c.name, component.get('hostNames') || [], stackComponent);
+        serviceConfig.get('configs').push(App.ServiceConfigProperty.create(hProperty));
+      }
     }, this);
-  },
-
-  /**
-   * set host name(s) property for component
-   * @param {String} serviceName - service name of component
-   * @param {String} componentName - component name which host we want to know
-   * @param {String} hostProperty - name of host property for current component
-   * @param {Boolean} multiple - true if can be more than one component
-   * @private
-   * @method setHostForService
-   */
-  setHostForService: function (serviceName, componentName, hostProperty, multiple) {
-    var configs = this.get('allConfigs');
-    var serviceConfigs = this.get('serviceConfigs').findProperty('serviceName', serviceName).get('configs');
-    var hostConfig = serviceConfigs.findProperty('name', hostProperty);
-    if (hostConfig) {
-      hostConfig.recommendedValue = this.getMasterComponentHostValue(componentName, multiple);
-      configs.push(App.ServiceConfigProperty.create(hostConfig));
-    }
-  },
-
-  /**
-   * get hostName of component
-   * @param {String} componentName
-   * @param {Boolean} multiple - true if can be more than one component installed on cluster
-   * @return {String|Array|Boolean} hostName|hostNames|false if missing component
-   * @private
-   * @method getMasterComponentHostValue
-   */
-  getMasterComponentHostValue: function (componentName, multiple) {
-    var components = App.HostComponent.find().filterProperty('componentName', componentName);
-  
-    if (components.length > 0) {
-      return multiple ? components.mapProperty('hostName') : components[0].get('hostName');
-    }
-    return false;
   },
 
   /**
@@ -672,13 +624,13 @@ App.MainServiceInfoConfigsController = Em.Controller.extend(App.ConfigsLoader, A
       App.router.get('mainServiceItemController').checkNnLastCheckpointTime(function () {
         return App.showConfirmationFeedBackPopup(function (query) {
           var selectedService = self.get('content.id');
-          batchUtils.restartAllServiceHostComponents(selectedService, true, query);
+          batchUtils.restartAllServiceHostComponents(serviceDisplayName, selectedService, true, query);
         }, bodyMessage);
       });
     } else {
       return App.showConfirmationFeedBackPopup(function (query) {
         var selectedService = self.get('content.id');
-        batchUtils.restartAllServiceHostComponents(selectedService, true, query);
+        batchUtils.restartAllServiceHostComponents(serviceDisplayName, selectedService, true, query);
       }, bodyMessage);
     }
   },

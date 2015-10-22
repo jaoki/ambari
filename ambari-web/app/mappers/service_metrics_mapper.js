@@ -18,7 +18,7 @@
 var App = require('app');
 var misc = require('utils/misc');
 var stringUtils = require('utils/string_utils');
-var dateUtils = require('utils/date');
+var dateUtils = require('utils/date/date');
 var previousMasterComponentIds = [];
 
 App.serviceMetricsMapper = App.QuickDataMapper.create({
@@ -283,8 +283,8 @@ App.serviceMetricsMapper = App.QuickDataMapper.create({
     } else if (item && item.ServiceInfo && item.ServiceInfo.service_name == "FLUME") {
       finalJson = this.flumeMapper(item);
       finalJson.rand = Math.random();
-      App.store.load(App.FlumeService, finalJson);
       App.store.loadMany(App.FlumeAgent, finalJson.agentJsons);
+      App.store.load(App.FlumeService, finalJson);
     } else if (item && item.ServiceInfo && item.ServiceInfo.service_name == "YARN") {
       finalJson = this.yarnMapper(item);
       finalJson.rand = Math.random();

@@ -22,7 +22,7 @@ var App = require('app');
  * @type {Function}
  */
 var defaultSuccessCallback = function(data, ajaxOptions, params) {
-  App.router.get('applicationController').dataLoading().done(function(initValue) {
+  App.router.get('userSettingsController').dataLoading('show_bg').done(function(initValue) {
     params.query && params.query.set('status', 'SUCCESS');
     if (initValue) {
       App.router.get('backgroundOperationsController').showPopup();
@@ -65,14 +65,15 @@ module.exports = {
 
   /**
    * Facade-function for restarting host components of specific service
+   * @param {String} serviceDisplayName for which service hostComponents should be restarted
    * @param {String} serviceName for which service hostComponents should be restarted
    * @param {bool} staleConfigsOnly restart only hostComponents with <code>staleConfig</code> true
    * @param {Object} query
    * @param {bool} runMmOperation
    */
-  restartAllServiceHostComponents: function(serviceName, staleConfigsOnly, query, runMmOperation) {
+  restartAllServiceHostComponents: function(serviceDisplayName, serviceName, staleConfigsOnly, query, runMmOperation) {
     var self = this;
-    var context = staleConfigsOnly ? Em.I18n.t('rollingrestart.context.allWithStaleConfigsForSelectedService').format(serviceName) : Em.I18n.t('rollingrestart.context.allForSelectedService').format(serviceName);
+    var context = staleConfigsOnly ? Em.I18n.t('rollingrestart.context.allWithStaleConfigsForSelectedService').format(serviceDisplayName) : Em.I18n.t('rollingrestart.context.allForSelectedService').format(serviceDisplayName);
 
     if (runMmOperation) {
       this.turnOnOffPassiveRequest('ON', Em.I18n.t('passiveState.turnOnFor').format(serviceName), serviceName);

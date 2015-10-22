@@ -94,6 +94,13 @@ App.hostsMapper = App.QuickDataMapper.create({
       var clusterName = App.get('clusterName');
       var advancedHostComponents = [];
 
+      // Create a map for quick access on existing hosts
+      var hosts = App.Host.find().toArray();
+      var hostsMap = {};
+      for (var p = 0; p < hosts.length; p++) {
+        hostsMap[hosts[p].get('hostName')] = hosts[p];
+      }
+
       // Use normal for loop instead of foreach to enhance performance
       for (var index = 0; index < json.items.length; index++) {
         var item = json.items[index];
@@ -153,7 +160,9 @@ App.hostsMapper = App.QuickDataMapper.create({
         var alertsSummary = item.alerts_summary;
         item.critical_warning_alerts_count = alertsSummary ? (alertsSummary.CRITICAL || 0) + (alertsSummary.WARNING || 0) : 0;
         item.cluster_id = clusterName;
-        item.index = index;
+        var existingHost = hostsMap[component.host_name];
+        // There is no need to override existing index in host detail view since old model(already have indexes) will not be cleared.
+        item.index = (existingHost && !json.itemTotal)? existingHost.get('index'): index;
 
         if (stackUpgradeSupport) {
           this.config = $.extend(this.config, {
@@ -182,15 +191,17 @@ App.hostsMapper = App.QuickDataMapper.create({
 
 
       for (var k = 0; k < advancedHostComponents.length; k++) {
-        var id = advancedHostComponents[k];
-        if (componentsIdMap[id]) componentsIdMap[id].display_name_advanced = App.HostComponent.find(id).get('displayNameAdvanced');
-      };
+        var key = advancedHostComponents[k];
+        if (componentsIdMap[key]) componentsIdMap[key].display_name_advanced = App.HostComponent.find(key).get('displayNameAdvanced');
+      }
+
       App.store.commit();
       if (stackUpgradeSupport) {
         App.store.loadMany(App.HostStackVersion, stackVersions);
       }
       App.store.loadMany(App.HostComponent, components);
-      if (App.router.get('currentState.parentState.name') != 'hostDetails') {
+      //"itemTotal" present only for Hosts page request
+      if (!Em.isNone(json.itemTotal)) {
         App.Host.find().clear();
       }
       App.store.loadMany(App.Host, hostsWithFullInfo);

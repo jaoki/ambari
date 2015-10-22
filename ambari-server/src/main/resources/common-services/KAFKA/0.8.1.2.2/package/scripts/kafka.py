@@ -21,8 +21,7 @@ limitations under the License.
 from resource_management import *
 from resource_management.libraries.resources.properties_file import PropertiesFile
 from resource_management.libraries.resources.template_config import TemplateConfig
-import sys, os
-from copy import deepcopy
+import os
 
 def kafka():
     import params
@@ -53,8 +52,6 @@ def kafka():
     else:
         kafka_server_config['host.name'] = params.hostname
 
-
-    kafka_server_config['kafka.metrics.reporters'] = params.kafka_metrics_reporters
     if(params.has_metric_collector):
             kafka_server_config['kafka.timeline.metrics.host'] = params.metric_collector_host
             kafka_server_config['kafka.timeline.metrics.port'] = params.metric_collector_port
@@ -94,6 +91,19 @@ def kafka():
         TemplateConfig(format("{conf_dir}/kafka_client_jaas.conf"),
                        owner=params.kafka_user)
 
+    # On some OS this folder could be not exists, so we will create it before pushing there files
+    Directory(params.limits_conf_dir,
+              recursive=True,
+              owner='root',
+              group='root'
+    )
+
+    File(os.path.join(params.limits_conf_dir, 'kafka.conf'),
+         owner='root',
+         group='root',
+         mode=0644,
+         content=Template("kafka.conf.j2")
+    )
 
     setup_symlink(params.kafka_managed_pid_dir, params.kafka_pid_dir)
     setup_symlink(params.kafka_managed_log_dir, params.kafka_log_dir)

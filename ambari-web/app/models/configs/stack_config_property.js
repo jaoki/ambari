@@ -156,6 +156,12 @@ App.StackConfigProperty = DS.Model.extend({
    */
   subSection: DS.belongsTo('App.SubSection'),
 
+  /**
+   * sub section tab to which belongs this property
+   * @property {App.SubSectionTab}
+   */
+  subSectionTab: DS.belongsTo('App.SubSectionTab'),
+
   /******************************* UI properties ****************************************/
 
   /**
@@ -284,3 +290,13 @@ App.StackConfigProperty = DS.Model.extend({
 
 
 App.StackConfigProperty.FIXTURES = [];
+
+App.StackConfigValAttributesMap = {
+  'overridable': 'isOverridable' ,
+  'visible': 'isVisible' ,
+  'empty_value_valid':'isRequired' ,
+  'editable_only_at_install': 'isReconfigurable' ,
+  'show_property_name': 'showLabel',
+  'read_only': 'isEditable',
+  'ui_only_property': 'isRequiredByAgent'
+};

@@ -32,15 +32,6 @@ else:
 config = Script.get_config()
 exec_tmp_dir = Script.get_tmp_dir()
 
-def get_combined_memory_mb(value1, value2):
-  try:
-    part1 = int(value1.strip()[:-1]) if value1.lower().strip()[-1:] == 'm' else int(value1)
-    part2 = int(value2.strip()[:-1]) if value2.lower().strip()[-1:] == 'm' else int(value2)
-    return str(part1 + part2) + 'm'
-  except:
-    return None
-pass
-
 #AMBARI_METRICS data
 ams_pid_dir = status_params.ams_collector_pid_dir
 
@@ -85,7 +76,7 @@ metric_prop_file_name = "hadoop-metrics2-hbase.properties"
 java64_home = config['hostLevelParams']['java_home']
 java_version = int(config['hostLevelParams']['java_version'])
 
-metrics_collector_heapsize = default('/configurations/ams-env/metrics_collector_heapsize', "512m")
+metrics_collector_heapsize = default('/configurations/ams-env/metrics_collector_heapsize', "512")
 host_sys_prepped = default("/hostLevelParams/host_sys_prepped", False)
 metrics_report_interval = default("/configurations/ams-site/timeline.metrics.sink.report.interval", 60)
 metrics_collection_period = default("/configurations/ams-site/timeline.metrics.sink.collection.period", 60)
@@ -107,7 +98,7 @@ hbase_master_maxperm_size = config['configurations']['ams-hbase-env']['hbase_mas
 
 # Choose heap size for embedded mode as sum of master + regionserver
 if not is_hbase_distributed:
-  hbase_heapsize = get_combined_memory_mb(master_heapsize, regionserver_heapsize)
+  hbase_heapsize = master_heapsize + regionserver_heapsize
   if hbase_heapsize is None:
     hbase_heapsize = master_heapsize
 else:

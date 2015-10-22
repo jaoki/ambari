@@ -55,7 +55,7 @@ def hbase(name=None):
       group = params.user_group,
       recursive = True
   )
-  
+ 
   parent_dir = os.path.dirname(params.tmp_dir)
   # In case if we have several placeholders in path
   while ("${" in parent_dir):
@@ -119,8 +119,22 @@ def hbase(name=None):
        owner = params.hbase_user,
        content=InlineTemplate(params.hbase_env_sh_template),
        group = params.user_group,
-  )     
-       
+  )
+  
+  # On some OS this folder could be not exists, so we will create it before pushing there files
+  Directory(params.limits_conf_dir,
+            recursive=True,
+            owner='root',
+            group='root'
+            )
+  
+  File(os.path.join(params.limits_conf_dir, 'hbase.conf'),
+       owner='root',
+       group='root',
+       mode=0644,
+       content=Template("hbase.conf.j2")
+       )
+    
   hbase_TemplateConfig( params.metric_prop_file_name,
     tag = 'GANGLIA-MASTER' if name == 'master' else 'GANGLIA-RS'
   )
@@ -167,6 +181,9 @@ def hbase(name=None):
                          mode=0711
     )
     params.HdfsResource(None, action="execute")
+
+  if params.phoenix_enabled:
+    Package(params.phoenix_package)
 
 def hbase_TemplateConfig(name, tag=None):
   import params

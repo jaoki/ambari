@@ -20,10 +20,13 @@ package org.apache.ambari.server.controller;
 
 
 import java.io.File;
+import java.io.IOException;
 import java.net.Authenticator;
 import java.net.BindException;
 import java.net.PasswordAuthentication;
+import java.net.URL;
 import java.util.EnumSet;
+import java.util.Enumeration;
 import java.util.Map;
 
 import javax.crypto.BadPaddingException;
@@ -63,7 +66,6 @@ import org.apache.ambari.server.controller.internal.StackDefinedPropertyProvider
 import org.apache.ambari.server.controller.internal.StackDependencyResourceProvider;
 import org.apache.ambari.server.controller.internal.UserPrivilegeResourceProvider;
 import org.apache.ambari.server.controller.internal.ViewPermissionResourceProvider;
-import org.apache.ambari.server.controller.metrics.timeline.cache.TimelineMetricCacheProvider;
 import org.apache.ambari.server.controller.utilities.DatabaseChecker;
 import org.apache.ambari.server.orm.GuiceJpaInitializer;
 import org.apache.ambari.server.orm.PersistenceType;
@@ -81,6 +83,7 @@ import org.apache.ambari.server.orm.entities.MetainfoEntity;
 import org.apache.ambari.server.resources.ResourceManager;
 import org.apache.ambari.server.resources.api.rest.GetResource;
 import org.apache.ambari.server.scheduler.ExecutionScheduleManager;
+import org.apache.ambari.server.security.AmbariServerSecurityHeaderFilter;
 import org.apache.ambari.server.security.CertificateManager;
 import org.apache.ambari.server.security.SecurityFilter;
 import org.apache.ambari.server.security.authorization.AmbariAuthorizationFilter;
@@ -149,6 +152,29 @@ public class AmbariServer {
 
   static {
     Velocity.setProperty("runtime.log.logsystem.log4j.logger", VELOCITY_LOG_CATEGORY);
+  }
+  
+  private static final String CLASSPATH_CHECK_CLASS = "org/apache/ambari/server/controller/AmbariServer.class";
+  private static final String CLASSPATH_SANITY_CHECK_FAILURE_MESSAGE = "%s class is found in multiple jar files. Possible reasons include multiple ambari server jar files in the ambari classpath.\n" +
+  "Check for additional ambari server jar files and check that /usr/lib/ambari-server/ambari-server*.jar matches only one file.";
+  
+  static {
+    Enumeration<URL> ambariServerClassUrls;
+    try {
+      ambariServerClassUrls = AmbariServer.class.getClassLoader().getResources(CLASSPATH_CHECK_CLASS);
+      
+      int ambariServerClassUrlsSize = 0;
+      while(ambariServerClassUrls.hasMoreElements()){
+        ambariServerClassUrlsSize++;
+        URL url = ambariServerClassUrls.nextElement();
+        LOG.info(String.format("Found %s class in %s", CLASSPATH_CHECK_CLASS, url.getPath()));
+      }
+      if(ambariServerClassUrlsSize>1) {
+        throw new RuntimeException(String.format(CLASSPATH_SANITY_CHECK_FAILURE_MESSAGE, CLASSPATH_CHECK_CLASS));
+      }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
   }
 
   private Server server = null;
@@ -289,6 +315,8 @@ public class AmbariServer {
       rootServlet = agentroot.addServlet(DefaultServlet.class, "/");
       rootServlet.setInitOrder(1);
 
+      // Conditionally adds security-related headers to all HTTP responses.
+      root.addFilter(new FilterHolder(injector.getInstance(AmbariServerSecurityHeaderFilter.class)), "/*", DISPATCHER_TYPES);
       //session-per-request strategy for api and agents
       root.addFilter(new FilterHolder(injector.getInstance(AmbariPersistFilter.class)), "/api/*", DISPATCHER_TYPES);
       // root.addFilter(new FilterHolder(injector.getInstance(AmbariPersistFilter.class)), "/proxy/*", DISPATCHER_TYPES);

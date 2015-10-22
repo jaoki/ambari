@@ -52,13 +52,13 @@ class JobHistoryServer(Script):
     env.set_params(params)
     
     self.configure(env)
-    spark_service(action='start')
+    spark_service('jobhistoryserver', action='start')
 
   def stop(self, env, rolling_restart=False):
     import params
     env.set_params(params)
     
-    spark_service(action='stop')
+    spark_service('jobhistoryserver', action='stop')
 
   def status(self, env):
     import status_params

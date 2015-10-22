@@ -23,6 +23,8 @@ from mock.mock import MagicMock, patch
 from resource_management.libraries.script import Script
 from resource_management.core import shell
 from resource_management.core.exceptions import Fail
+import resource_management.libraries.functions.dfs_datanode_helper
+
 
 class TestDatanode(RMFTestCase):
   COMMON_SERVICES_PACKAGE_DIR = "HDFS/2.1.0.2.0/package"
@@ -347,6 +349,12 @@ class TestDatanode(RMFTestCase):
                               mode = 0751,
                               recursive = True,
                               )
+    self.assertResourceCalled('Directory', '/var/lib/ambari-agent/data/datanode',
+                              owner = 'hdfs',
+                              group = 'hadoop',
+                              mode = 0755,
+                              recursive = True
+    )
     self.assertResourceCalled('Directory', '/hadoop/hdfs/data',
                               owner = 'hdfs',
                               ignore_failures = True,
@@ -354,6 +362,13 @@ class TestDatanode(RMFTestCase):
                               mode = 0755,
                               recursive = True,
                               cd_access='a'
+                              )
+    content = resource_management.libraries.functions.dfs_datanode_helper.DATA_DIR_TO_MOUNT_HEADER
+    self.assertResourceCalled('File', '/var/lib/ambari-agent/data/datanode/dfs_data_dir_mount.hist',
+                              owner = 'hdfs',
+                              group = 'hadoop',
+                              mode = 0644,
+                              content = content
                               )
 
   def assert_configure_secured(self, stackVersion=STACK_VERSION, snappy_enabled=True):
@@ -412,6 +427,12 @@ class TestDatanode(RMFTestCase):
                               mode = 0751,
                               recursive = True,
                               )
+    self.assertResourceCalled('Directory', '/var/lib/ambari-agent/data/datanode',
+                              owner = 'hdfs',
+                              group = 'hadoop',
+                              mode = 0755,
+                              recursive = True
+    )
     self.assertResourceCalled('Directory', '/hadoop/hdfs/data',
                               owner = 'hdfs',
                               ignore_failures = True,
@@ -419,6 +440,13 @@ class TestDatanode(RMFTestCase):
                               mode = 0755,
                               recursive = True,
                               cd_access='a'
+                              )
+    content = resource_management.libraries.functions.dfs_datanode_helper.DATA_DIR_TO_MOUNT_HEADER
+    self.assertResourceCalled('File', '/var/lib/ambari-agent/data/datanode/dfs_data_dir_mount.hist',
+                              owner = 'hdfs',
+                              group = 'hadoop',
+                              mode = 0644,
+                              content = content
                               )
 
 
@@ -435,7 +463,7 @@ class TestDatanode(RMFTestCase):
                        hdp_stack_version = self.STACK_VERSION,
                        target = RMFTestCase.TARGET_COMMON_SERVICES)
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'hadoop-hdfs-datanode', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-hdfs-datanode', version), sudo=True,)
     self.assertNoMoreResources()
 
 
@@ -456,17 +484,17 @@ class TestDatanode(RMFTestCase):
                        target = RMFTestCase.TARGET_COMMON_SERVICES,
                        call_mocks = [(0, None), (0, None)],
                        mocks_dict = mocks_dict)
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hadoop-hdfs-datanode', version), sudo=True,)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-hdfs-datanode', version), sudo=True,)
 
     self.assertNoMoreResources()
 
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(1, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
 
 

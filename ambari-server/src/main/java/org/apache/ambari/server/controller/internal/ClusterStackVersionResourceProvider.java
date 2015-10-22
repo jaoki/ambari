@@ -474,7 +474,7 @@ public class ClusterStackVersionResourceProvider extends AbstractControllerResou
     for (ServiceComponentHost component : components) {
       servicesOnHost.add(component.getServiceName());
     }
-
+    List<String> blacklistedPackagePrefixes = configuration.getRollingUpgradeSkipPackagesPrefixes();
     for (String serviceName : servicesOnHost) {
       ServiceInfo info;
       try {
@@ -488,7 +488,16 @@ public class ClusterStackVersionResourceProvider extends AbstractControllerResou
               host.getOsFamily());
       for (ServiceOsSpecific.Package aPackage : packagesForService) {
         if (! aPackage.getSkipUpgrade()) {
-          packages.add(aPackage);
+          boolean blacklisted = false;
+          for(String prefix : blacklistedPackagePrefixes) {
+            if (aPackage.getName().startsWith(prefix)) {
+              blacklisted = true;
+              break;
+            }
+          }
+          if (! blacklisted) {
+            packages.add(aPackage);
+          }
         }
       }
     }
@@ -680,11 +689,9 @@ public class ClusterStackVersionResourceProvider extends AbstractControllerResou
         throw new SystemException(detailedOutput);
       }
     } catch (AmbariException e) {
-      e.printStackTrace();
-      throw new SystemException("Can not perform request. " + e.getMessage(), e);
+      throw new SystemException("Cannot perform request", e);
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new SystemException("Can not perform request. " + e.getMessage(), e);
+      throw new SystemException("Cannot perform request", e);
     }
   }
 

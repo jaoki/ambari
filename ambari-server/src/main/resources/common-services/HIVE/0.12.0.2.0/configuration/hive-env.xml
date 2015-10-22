@@ -91,6 +91,7 @@
     <display-name>Hive Log Dir</display-name>
     <description>Directory for Hive Log files.</description>
     <value-attributes>
+      <type>directory</type>
       <overridable>false</overridable>
       <editable-only-at-install>true</editable-only-at-install>
     </value-attributes>
@@ -101,12 +102,14 @@
     <display-name>Hive PID Dir</display-name>
     <description>Hive PID Dir.</description>
     <value-attributes>
+      <type>directory</type>
       <overridable>false</overridable>
       <editable-only-at-install>true</editable-only-at-install>
     </value-attributes>
   </property>
   <property>
     <name>hive_user</name>
+    <display-name>Hive User</display-name>
     <value>hive</value>
     <property-type>USER</property-type>
     <description>Hive User.</description>
@@ -120,6 +123,7 @@
     <display-name>WebHCat Log Dir</display-name>
     <description>WebHCat Log Dir.</description>
     <value-attributes>
+      <type>directory</type>
       <overridable>false</overridable>
       <editable-only-at-install>true</editable-only-at-install>
     </value-attributes>
@@ -130,18 +134,21 @@
     <display-name>WebHCat Pid Dir</display-name>
     <description>WebHCat Pid Dir.</description>
     <value-attributes>
+      <type>directory</type>
       <overridable>false</overridable>
       <editable-only-at-install>true</editable-only-at-install>
     </value-attributes>
   </property>
   <property>
     <name>hcat_user</name>
+    <display-name>HCat User</display-name>
     <value>hcat</value>
     <property-type>USER</property-type>
     <description>HCat User.</description>
   </property>
   <property>
     <name>webhcat_user</name>
+    <display-name>WebHCat User</display-name>
     <value>hcat</value>
     <property-type>USER</property-type>
     <description>WebHCat User.</description>

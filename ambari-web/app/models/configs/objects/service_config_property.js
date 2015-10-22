@@ -77,6 +77,21 @@ App.ServiceConfigProperty = Em.Object.extend({
    */
   supportsFinal: false,
 
+  /**
+   * Hint message to display in tooltip. Tooltip will be wrapped on question mark icon.
+   * If value is <code>false</code> no tooltip and question mark icon.
+   *
+   * @type {boolean|string}
+   */
+  hintMessage: false,
+
+  /**
+   * Display label on the right side from input. In general used for checkbox only.
+   *
+   * @type {boolean}
+   */
+  rightSideLabel: false,
+
   retypedPassword: '',
   description: '',
   displayType: 'string', // string, digits, number, directories, custom
@@ -137,8 +152,6 @@ App.ServiceConfigProperty = Em.Object.extend({
   }.property('errorMessage', 'warnMessage', 'overrideErrorTrigger'),
 
   overrideErrorTrigger: 0, //Trigger for overridable property error
-  isRestartRequired: false,
-  restartRequiredMessage: 'Restart required',
   index: null, //sequence number in category
   editDone: false, //Text field: on focusOut: true, on focusIn: false
   isNotSaved: false, // user property was added but not saved
@@ -177,12 +190,11 @@ App.ServiceConfigProperty = Em.Object.extend({
     var editable = this.get('isEditable');
     var overrides = this.get('overrides');
     var dt = this.get('displayType');
-    return overrideable && (editable || !overrides || !overrides.length) && ("masterHost" != dt);
+    return overrideable && (editable || !overrides || !overrides.length) && (!["componentHost", "password"].contains(dt));
   }.property('isEditable', 'displayType', 'isOverridable', 'overrides.length'),
 
   isOverridden: function() {
-    var overrides = this.get('overrides');
-    return (overrides != null && overrides.get('length')>0) || !this.get('isOriginalSCP');
+    return (this.get('overrides') != null && this.get('overrides.length') > 0) || !this.get('isOriginalSCP');
   }.property('overrides', 'overrides.length', 'isOriginalSCP'),
 
   isOverrideChanged: function () {
@@ -192,14 +204,9 @@ App.ServiceConfigProperty = Em.Object.extend({
   }.property('isOverridden', 'overrides.@each.isNotDefaultValue', 'overrideValues.length'),
 
   isRemovable: function() {
-    var isOriginalSCP = this.get('isOriginalSCP');
-    var isUserProperty = this.get('isUserProperty');
-    var isRequiredByAgent = this.get('isRequiredByAgent');
-    var isEditable = this.get('isEditable');
-    var hasOverrides = this.get('overrides.length') > 0;
-    // Removable when this is a user property, or it is not an original property and it is editable
-    return isEditable && !hasOverrides && isRequiredByAgent && (isUserProperty || !isOriginalSCP);
-  }.property('isUserProperty', 'isOriginalSCP', 'overrides.length'),
+    return this.get('isEditable') && this.get('isRequiredByAgent') && !(this.get('overrides.length') > 0)
+       && (this.get('isUserProperty') || !this.get('isOriginalSCP'));
+  }.property('isUserProperty', 'isOriginalSCP', 'overrides.length', 'isRequiredByAgent'),
 
   init: function () {
     if (this.get('value') == '') {
@@ -209,7 +216,7 @@ App.ServiceConfigProperty = Em.Object.extend({
         this.set('value', this.get('recommendedValue'));
       }
     }
-    if(this.get("displayType") === "password"){
+    if(this.get("displayType") === "password") {
       this.set('retypedPassword', this.get('value'));
       this.set('recommendedValue', '');
     }
@@ -239,48 +246,8 @@ App.ServiceConfigProperty = Em.Object.extend({
    * Don't show "Undo" for hosts on Installer Step7
    */
   cantBeUndone: function() {
-    return ["masterHost", "slaveHosts", "masterHosts", "slaveHost", "radio button"].contains(this.get('displayType'));
+    return ["componentHost", "componentHosts", "radio button"].contains(this.get('displayType'));
   }.property('displayType'),
-
-  /**
-   * Used in <code>templates/common/configs/service_config_category.hbs</code>
-   * @type {boolean}
-   */
-  undoAvailable: function () {
-    return !this.get('cantBeUndone') && this.get('isNotDefaultValue');
-  }.property('cantBeUndone', 'isNotDefaultValue'),
-
-  /**
-   * Used in <code>templates/common/configs/service_config_category.hbs</code>
-   * @type {boolean}
-   */
-  removeAvailable: function () {
-    return this.get('isRemovable') && !this.get('isComparison');
-  }.property('isComparison', 'isRemovable'),
-
-  /**
-   * Used in <code>templates/common/configs/service_config_category.hbs</code>
-   * @type {boolean}
-   */
-  switchGroupAvailable: function () {
-    return !this.get('isEditable') && this.get('group');
-  }.property('isEditable', 'group'),
-
-  /**
-   * Used in <code>templates/common/configs/service_config_category.hbs</code>
-   * @type {boolean}
-   */
-  setRecommendedAvailable: function () {
-    return this.get('isEditable') && this.get('recommendedValueExists');
-  }.property('isEditable', 'recommendedValueExists'),
-
-  /**
-   * Used in <code>templates/common/configs/service_config_category.hbs</code>
-   * @type {boolean}
-   */
-  overrideAvailable: function () {
-    return !this.get('isComparison') && this.get('isPropertyOverridable') && (this.get('displayType') !== 'password');
-  }.property('isPropertyOverridable', 'isComparison'),
 
   isValid: function () {
     return this.get('errorMessage') === '';
@@ -289,6 +256,7 @@ App.ServiceConfigProperty = Em.Object.extend({
   viewClass: function () {
     switch (this.get('displayType')) {
       case 'checkbox':
+      case 'boolean':
         if (this.get('dependentConfigPattern')) {
           return App.ServiceConfigCheckboxWithDependencies;
         } else {
@@ -312,14 +280,12 @@ App.ServiceConfigProperty = Em.Object.extend({
         break;
       case 'custom':
         return App.ServiceConfigBigTextArea;
-      case 'masterHost':
+      case 'componentHost':
         return App.ServiceConfigMasterHostView;
       case 'label':
         return App.ServiceConfigLabelView;
-      case 'masterHosts':
-        return App.ServiceConfigMasterHostsView;
-      case 'slaveHosts':
-        return App.ServiceConfigSlaveHostsView;
+      case 'componentHosts':
+        return App.ServiceConfigComponentHostsView;
       case 'supportTextConnection':
         return App.checkConnectionView;
       default:
@@ -336,7 +302,6 @@ App.ServiceConfigProperty = Em.Object.extend({
     var supportsFinal = this.get('supportsFinal');
     var isFinal = this.get('isFinal');
     var valueRange = this.get('valueRange');
-    var values = [];//value split by "," to check UNIX users, groups list
 
     var isError = false;
     var isWarn = false;
@@ -380,21 +345,6 @@ App.ServiceConfigProperty = Em.Object.extend({
             isError = true;
           }
           break;
-        case 'UNIXList':
-          if(value != '*'){
-            values = value.split(',');
-            for(var i = 0, l = values.length; i < l; i++){
-              if(!validator.isValidUNIXUser(values[i])){
-                if(this.get('type') == 'USERS'){
-                  this.set('errorMessage', 'Must be a valid list of user names');
-                } else {
-                  this.set('errorMessage', 'Must be a valid list of group names');
-                }
-                isError = true;
-              }
-            }
-          }
-          break;
         case 'checkbox':
           break;
         case 'directories':
@@ -434,8 +384,7 @@ App.ServiceConfigProperty = Em.Object.extend({
         case 'supportTextConnection':
         case 'host':
           var connectionProperties = ['kdc_host'];
-          var hiveOozieHostNames = ['hive_hostname','hive_existing_mysql_host','hive_existing_oracle_host','hive_ambari_host',
-            'oozie_hostname','oozie_existing_mysql_host','oozie_existing_oracle_host','oozie_ambari_host'];
+          var hiveOozieHostNames = ['hive_hostname','oozie_hostname'];
           if(hiveOozieHostNames.contains(this.get('name'))) {
             if (validator.hasSpaces(value)) {
               this.set('errorMessage', Em.I18n.t('host.spacesValidation'));
@@ -448,9 +397,16 @@ App.ServiceConfigProperty = Em.Object.extend({
             }
           }
           break;
+        case 'password':
+          // retypedPassword is set by the retypePasswordView child view of App.ServiceConfigPasswordField
+          if (value !== this.get('retypedPassword')) {
+            this.set('errorMessage', 'Passwords do not match');
+            isError = true;
+          }
+          break;
         case 'multiLine':
         case 'content':
-        case 'advanced':
+        default:
           if(this.get('name')=='javax.jdo.option.ConnectionURL' || this.get('name')=='oozie.service.JPAService.jdbc.url') {
             if (validator.isConfigValueLink(value)) {
               isError = false;
@@ -467,12 +423,6 @@ App.ServiceConfigProperty = Em.Object.extend({
             }
           }
           break;
-        case 'password':
-          // retypedPassword is set by the retypePasswordView child view of App.ServiceConfigPasswordField
-          if (value !== this.get('retypedPassword')) {
-            this.set('errorMessage', 'Passwords do not match');
-            isError = true;
-          }
       }
     }
 

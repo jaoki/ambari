@@ -39,8 +39,11 @@ Em.I18n.translations = {
   'app.settings':'Settings',
   'app.manageAmbari': 'Manage Ambari',
   'app.aboutAmbari':'About',
+  'app.settings.selectTimezone': 'Timezone',
   'app.settings.notshowBgOperationsPopup': 'Do not show the Background Operations dialog when starting an operation',
   'app.settings.notShowBgOperations': 'Do not show this dialog again when starting a background operation',
+  'app.settings.categories.general': 'General',
+  'app.settings.categories.locale': 'Locale',
 
   'app.aboutAmbari.getInvolved': 'Get involved!',
   'app.aboutAmbari.version': 'Version',
@@ -267,12 +270,25 @@ Em.I18n.translations = {
   'common.dataSet': 'Data Set',
   'common.label': 'Label',
   'common.preview': 'Preview',
+  'common.options': 'Options',
   'common.scope': 'Scope',
   'common.clone': 'Clone',
   'common.removed': 'Removed',
   'common.testing': 'Testing',
   'common.noData': 'No Data',
+  'common.export': 'Export',
+  'common.csv': 'CSV',
+  'common.json': 'JSON',
+  'common.timestamp': 'Timestamp',
+  'common.timezone': 'Timezone',
   'common.loading.eclipses': 'Loading...',
+  'common.running': 'Running',
+  'common.stopped': 'Stopped',
+  'common.timeout.warning.popup.header': 'Automatic Logout',
+  'common.timeout.warning.popup.body.before': 'You will be automatically logged out in ',
+  'common.timeout.warning.popup.body.after': ' seconds due to inactivity',
+  'common.timeout.warning.popup.primary': 'Remain Logged In',
+  'common.timeout.warning.popup.secondary': 'Log Out Now',
 
   'models.alert_instance.tiggered.verbose': "Occurred on {0} <br> Checked on {1}",
   'models.alert_definition.triggered.verbose': "Occurred on {0}",
@@ -481,8 +497,6 @@ Em.I18n.translations = {
   'installer.controls.serviceConfigMultipleHosts.other':'1 other',
   'installer.controls.serviceConfigMultipleHosts.others':'{0} others',
   'installer.controls.serviceConfigMasterHosts.header':'{0} Hosts',
-  'installer.controls.addSlaveComponentGroupButton.title':'Add a {0} Group',
-  'installer.controls.addSlaveComponentGroupButton.content':'If you need different settings on certain {0}s, you can add a {1} group.<br>All {2}s within the same group will have the same set of settings.  You can create multiple groups.',
   'installer.controls.slaveComponentChangeGroupName.error':'group with this name already exist',
 
   'installer.step0.header':'Get Started',
@@ -726,7 +740,7 @@ Em.I18n.translations = {
   'installer.step4.ambariMetricsCheck.popup.header':'Limited Functionality Warning',
   'installer.step4.ambariMetricsCheck.popup.body':'Ambari Metrics collects metrics from the cluster and makes them available to Ambari.  If you do not install Ambari Metrics service, metrics will not be accessible from Ambari.  Are you sure you want to proceed without Ambari Metrics?',
   'installer.step4.rangerRequirements.popup.header': 'Ranger Requirements',
-  'installer.step4.rangerRequirements.popup.body.requirements': '<ol><li>You must have an <strong>MySQL/Oracle/Postgres/MSSQL/SQLA Server</strong> database instance running to be used by Ranger.</li>' +
+  'installer.step4.rangerRequirements.popup.body.requirements': '<ol><li>You must have an <strong>MySQL/Oracle/Postgres/MSSQL/SQL Anywhere Server</strong> database instance running to be used by Ranger.</li>' +
     '<li>In Assign Masters step of this wizard, you will be prompted to specify which host for the Ranger Admin. On that host, you <strong>must have DB Client installed</strong> for Ranger to access to the database. (Note: This is applicable for only Ranger 0.4.0)</li>' +
     '<li>Ensure that the access for the DB Admin user is enabled in DB server from any host.</li>' +
     '<li>Execute the following command on the Ambari Server host. Replace <code>database-type</code> with <strong>mysql|oracle|postgres|mssql|sqlanywhere</strong> and <code>/jdbc/driver/path</code> based on the location of corresponding JDBC driver:' +
@@ -797,6 +811,13 @@ Em.I18n.translations = {
   'installer.step7.misc.notification.use_tls':'Use TLS',
   'installer.step7.misc.notification.use_ssl':'Use SSL',
 
+  'installer.step7.preInstallChecks':'Pre Install Checks',
+  'installer.step7.preInstallChecks.notRunChecksWarnPopup.header':'Skipping Pre Install Checks',
+  'installer.step7.preInstallChecks.notRunChecksWarnPopup.body':'Skipping Pre Install Checks is not recommended.',
+  'installer.step7.preInstallChecks.notRunChecksWarnPopup.primary':'Ignore and Proceed',
+  'installer.step7.preInstallChecks.notRunChecksWarnPopup.secondary':'Run Pre Install Checks',
+  'installer.step7.preInstallChecks.checksPopup.header':'Pre Install Checks',
+
 
   'installer.step8.header': 'Review',
   'installer.step8.body': 'Please review the configuration before installation',
@@ -813,6 +834,7 @@ Em.I18n.translations = {
   'installer.step9.header':'Install, Start and Test',
   'installer.step9.body':'Please wait while the selected services are installed and started.',
   'installer.step9.status.success':'Successfully installed and started the services.',
+  'installer.step9.status.skipStartSuccess':'Successfully installed the services.',
   'installer.step9.status.warning':'Installed and started the services with some warnings.',
   'installer.step9.status.failed':'Failed to install/start the services.',
   'installer.step9.status.start.services.failed':'Start all services API call failed.',
@@ -878,7 +900,8 @@ Em.I18n.translations = {
     'services to function properly (for example, HDFS and YARN/MapReduce need to be restarted after adding Oozie). After closing this ' +
     'wizard, please restart all services that have the restart indicator <i class="icon-refresh"></i> next to the service name.',
   'installer.step10.hostsSummary':'The cluster consists of {0} hosts',
-  'installer.step10.servicesSummary':'Installed and started services successfully on {0} new ',
+  'installer.step10.installedAndStarted':'Installed and started services successfully on {0} new ',
+  'installer.step10.installed':'Installed services successfully on {0} new ',
   'installer.step10.warnings':' warnings',
   'installer.step10.clusterState.installing':'Installing ',
   'installer.step10.clusterState.starting':'Starting ',
@@ -889,6 +912,7 @@ Em.I18n.translations = {
   'installer.step10.installStatus.installed':'Master services installed',
   'installer.step10.master.installedOn':'{0} installed on {1}',
   'installer.step10.startStatus.failed':'Starting services failed',
+  'installer.step10.startStatus.skipped':'Starting services skipped',
   'installer.step10.startStatus.passed':'All tests passed',
   'installer.step10.startStatus.started':'All services started',
   'installer.step10.installTime.seconds':'Install and start completed in {0} seconds',
@@ -1011,6 +1035,13 @@ Em.I18n.translations = {
   'admin.authentication.form.test.success':'The configuration passes the test',
   'admin.authentication.form.test.fail':'The configuration fails the test',
 
+
+  'admin.kerberos.credentials.store.hint.supported': 'When checked, Ambari will store the KDC Admin credentials so they are not required to be re-entered during future changes of services, hosts, and components.',
+  'admin.kerberos.credentials.store.hint.not.supported': 'Ambari is not configured for storing credentials',
+  'admin.kerberos.credentials.store.label': 'Save Admin Credentials',
+  'admin.kerberos.credentials.store.menu.label': 'Manage KDC Credentials',
+  'admin.kerberos.credentials.remove.confirmation.header': 'Remove KDC Credentials Confirmation',
+  'admin.kerberos.credentials.remove.confirmation.body': 'You are about to remove the KDC Credentials from Ambari. Are you sure?',
   'admin.kerberos.wizard.configuration.note': 'This is the initial configuration created by Enable Kerberos wizard.',
   'admin.kerberos.wizard.header':'Enable Kerberos Wizard',
   'admin.kerberos.button.enable': 'Enable Kerberos',
@@ -1177,6 +1208,7 @@ Em.I18n.translations = {
   'admin.highAvailability.step4.save.configuration.note':'This configuration is created by Enable {0} HA wizard',
   'admin.highAvailability.wizard.step6.jsNoInit':'JournalNodes not initialized yet',
   'admin.highAvailability.wizard.step6.jsInit':'JournalNodes initialized',
+  'admin.highAvailability.wizard.step6.jnStopped':'All JournalNodes should be started before initializing',
   'admin.highAvailability.wizard.step8.metaNoInit':'Metadata not initialized yet',
   'admin.highAvailability.wizard.step8.confirmPopup.body':'Please confirm that you have run the manual steps before continuing.',
 
@@ -1415,9 +1447,27 @@ Em.I18n.translations = {
   'admin.stackVersions.version.upgrade.notFinalized.warning': "The upgrade has not been finalized yet. After the cluster is verified to be functional, do not forget to finalize the upgrade as soon as possible (within a couple of days is highly recommended) as running the cluster in unfinalized state causes extra resource requirements on HDFS.",
   'admin.stackVersions.version.upgrade.running': "Upgrade: In Process",
   'admin.stackVersions.version.upgrade.aborted': "Upgrade: Aborted",
+  'admin.stackVersions.version.upgrade.suspended': "Upgrade: Paused",
   'admin.stackVersions.version.downgrade.pause': "Downgrade: Action Required",
   'admin.stackVersions.version.downgrade.running': "Downgrade: In Process",
   'admin.stackVersions.version.downgrade.aborted': "Downgrade: Aborted",
+
+  'admin.stackVersions.version.upgrade.upgradeOptions.header': "Upgrade Options",
+  'admin.stackVersions.version.upgrade.upgradeOptions.bodyMsg.version': "You are about to perform an upgrade to <b>{0}</b>.",
+  'admin.stackVersions.version.upgrade.upgradeOptions.bodyMsg.method': "Choose the upgrade method:",
+  'admin.stackVersions.version.upgrade.upgradeOptions.bodyMsg.tolerance': "Select optional upgrade failure tolerance:",
+  'admin.stackVersions.version.upgrade.upgradeOptions.tolerance.option1': "Skip all Slave Component failures",
+  'admin.stackVersions.version.upgrade.upgradeOptions.tolerance.option2': "Skip all Service Check failures",
+  'admin.stackVersions.version.upgrade.upgradeOptions.tolerance.tooltip': "These upgrade failure tolerance options are useful when performing an upgrade on a large cluster and you want to minimize user intervention.",
+  'admin.stackVersions.version.upgrade.upgradeOptions.RU.title': "Rolling Upgrade",
+  'admin.stackVersions.version.upgrade.upgradeOptions.RU.description': "Services remain running while the upgrade is performed. Minimized disruption but slower upgrade.",
+  'admin.stackVersions.version.upgrade.upgradeOptions.EU.title': "Express Upgrade",
+  'admin.stackVersions.version.upgrade.upgradeOptions.EU.description': "Services are stopped while the upgrade is performed. Incurs downtime, but faster upgrade.",
+  'admin.stackVersions.version.upgrade.upgradeOptions.preCheck.rerun':'Rerun Checks',
+  'admin.stackVersions.version.upgrade.upgradeOptions.preCheck.msg.title':'Checks:',
+  'admin.stackVersions.version.upgrade.upgradeOptions.preCheck.allPassed':'Passed',
+  'admin.stackVersions.version.upgrade.upgradeOptions.preCheck.failed.tooltip':'Option not available',
+  'admin.stackVersions.version.upgrade.upgradeOptions.notAllowed':'Not allowed by the current version',
 
   'admin.stackVersions.hosts.popup.header.current': "Current",
   'admin.stackVersions.hosts.popup.header.installed': "Installed",
@@ -1456,7 +1506,7 @@ Em.I18n.translations = {
   'admin.stackUpgrade.state.paused.downgrade': "Downgrade Paused",
   'admin.stackUpgrade.state.aborted.downgrade': "Downgrade Aborted",
   'admin.stackUpgrade.state.completed.downgrade': "Downgrade Finished",
-  'admin.stackUpgrade.dialog.header': "Rolling Upgrade to {0}",
+  'admin.stackUpgrade.dialog.header': "{0} to {1}",
   'admin.stackUpgrade.dialog.downgrade.header': "Downgrade to {0}",
   'admin.stackUpgrade.dialog.operationFailed': "This operation failed.",
   'admin.stackUpgrade.dialog.stop': "Stop Upgrade",
@@ -1471,6 +1521,8 @@ Em.I18n.translations = {
   'admin.stackUpgrade.dialog.closePause': "Upgrade is paused. \n If you dismiss this window, you can resume Upgrade later.",
   'admin.stackUpgrade.dialog.aborted': "Upgrade is aborted. \n You can either downgrade or retry upgrade.",
   'admin.stackUpgrade.dialog.downgrade.aborted': "Downgrade is aborted. \n You can retry downgrade.",
+  'admin.stackUpgrade.dialog.suspended': "Upgrade is Paused",
+  'admin.stackUpgrade.dialog.resume': "Resume Upgrade",
   'admin.stackUpgrade.dialog.details.open': "show details",
   'admin.stackUpgrade.dialog.details.hide': "hide details",
   'admin.stackUpgrade.dialog.notActive': "Waiting to execute the next task...",
@@ -1815,7 +1867,7 @@ Em.I18n.translations = {
     '<li>Once in Safe Mode, create a Checkpoint:' +
     '<div class="code-snippet">sudo su {1} -l -c \'hdfs dfsadmin -saveNamespace\'</div></li>' +
     '</ol>',
-  'services.service.stop.HDFS.warningMsg.checkPointTooOld': 'The last HDFS checkpoint is older than 12 hours. Make sure that you have taken a checkpoint before proceeding. Otherwise, the NameNode(s) can take a very long time to start up.',
+  'services.service.stop.HDFS.warningMsg.checkPointTooOld': 'The last HDFS checkpoint is older than {0} hours. Make sure that you have taken a checkpoint before proceeding. Otherwise, the NameNode(s) can take a very long time to start up.',
   'services.service.config_groups_popup.header':'Manage {0} Configuration Groups',
   'services.service.config_groups_popup.notice':'You can apply different sets of {{serviceName}} configurations to groups of hosts by managing {{serviceName}} Configuration Groups and their host membership.  Hosts belonging to a {{serviceName}} Configuration Group have the same set of configurations for {{serviceName}}. Each host belongs to one {{serviceName}} Configuration Group.',
   'services.service.config_groups_popup.rename':'Rename',
@@ -1961,10 +2013,10 @@ Em.I18n.translations = {
     '</div>',
   'services.reassign.step5.body.app_timeline_server': '<div class="alert alert-info">' +
   '<ol>' +
-  '<li>Copy <b>/hadoop/yarn/timeline/leveldb-timeline-store.ldb</b> from the source host <b>{1}</b> to <b>/hadoop/yarn/timeline/leveldb-timeline-store.ldb</b> on the target host <b>{2}</b>.</li>' +
+  '<li>Copy <b>{7}/leveldb-timeline-store.ldb</b> from the source host <b>{1}</b> to <b>{7}/leveldb-timeline-store.ldb</b> on the target host <b>{2}</b>.</li>' +
   '<li>Login to the target host <b>{2}</b> and change permissions by running:' +
-  '<div class="code-snippet">chown -R {3}:{5} /hadoop/yarn/timeline/leveldb-timeline-store.ldb</div></li>' +
-  '<div class="code-snippet">chmod -R 700 /hadoop/yarn/timeline/leveldb-timeline-store.ldb</div></li>' +
+  '<div class="code-snippet">chown -R {3}:{5} {7}/leveldb-timeline-store.ldb</div></li>' +
+  '<div class="code-snippet">chmod -R 700 {7}/leveldb-timeline-store.ldb</div></li>' +
   '</ol>' +
   '</div>',
   'services.reassign.step5.body.securityNotice': '<div class="alert alert-info"> <div class="alert alert-warn"> <strong>Note: </strong> Secure cluster' +
@@ -2331,7 +2383,7 @@ Em.I18n.translations = {
   'dashboard.button.switch': 'Switch to classic dashboard',
   'dashboard.button.switchShort': 'Switch',
   'dashboard.button.reset': 'Reset all widgets to default ',
-  'dashboard.button.gangliaLink': 'View metrics in Ganglia',
+  'dashboard.widgets.actions.title': 'Metric Actions',
   'dashboard.widgets.create': 'Create Widget',
   'dashboard.widgets.actions.browse': 'Browse Widgets',
   'dashboard.widgets.layout.import': 'Import a layout',

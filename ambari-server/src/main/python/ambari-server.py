@@ -30,7 +30,7 @@ from ambari_commons.os_check import OSConst
 from ambari_commons.os_family_impl import OsFamilyFuncImpl, OsFamilyImpl
 from ambari_commons.os_utils import remove_file
 from ambari_server.BackupRestore import main as BackupRestore_main
-from ambari_server.dbConfiguration import DATABASE_NAMES
+from ambari_server.dbConfiguration import DATABASE_NAMES, LINUX_DBMS_KEYS_LIST
 from ambari_server.serverConfiguration import configDefaults, get_ambari_properties, PID_NAME
 from ambari_server.serverUtils import is_server_runing, refresh_stack_hash
 from ambari_server.serverSetup import reset, setup, setup_jce_policy
@@ -142,7 +142,7 @@ def stop(args):
 
   if status:
     try:
-      os.killpg(os.getpgid(pid), signal.SIGKILL)
+      os.kill(pid, signal.SIGTERM)
     except OSError, e:
       print_info_msg("Unable to stop Ambari Server - " + str(e))
       return
@@ -189,7 +189,7 @@ def refresh_stack_hash_action():
 def create_setup_security_actions(args):
   action_list = [
       ['Enable HTTPS for Ambari server.', UserActionRestart(setup_https, args)],
-      ['Encrypt passwords stored in ambari.properties file.', UserAction(setup_master_key)],
+      ['Encrypt passwords stored in ambari.properties file.', UserAction(setup_master_key, args)],
       ['Setup Ambari kerberos JAAS configuration.', UserAction(setup_ambari_krb5_jaas)],
       ['Setup truststore.', UserActionRestart(setup_truststore)],
       ['Import certificate to truststore.', UserActionRestart(setup_truststore, True)],
@@ -200,7 +200,7 @@ def create_setup_security_actions(args):
 def create_setup_security_actions(args):
   action_list = [
       ['Enable HTTPS for Ambari server.', UserActionRestart(setup_https, args)],
-      ['Encrypt passwords stored in ambari.properties file.', UserAction(setup_master_key)],
+      ['Encrypt passwords stored in ambari.properties file.', UserAction(setup_master_key, args)],
       ['Setup Ambari kerberos JAAS configuration.', UserAction(setup_ambari_krb5_jaas)],
       ['Setup truststore.', UserActionRestart(setup_truststore)],
       ['Import certificate to truststore.', UserActionRestart(setup_truststore, True)],
@@ -454,6 +454,7 @@ def fix_database_options(options, parser):
     parser.error("Unsupported Database " + options.dbms)
   elif options.dbms is not None:
     options.dbms = options.dbms.lower()
+    options.database_index = LINUX_DBMS_KEYS_LIST.index(options.dbms)
 
   _validate_database_port(options, parser)
 

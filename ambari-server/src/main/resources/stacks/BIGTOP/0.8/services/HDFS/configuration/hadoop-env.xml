@@ -73,20 +73,17 @@
   </property>
   <property>
     <name>proxyuser_group</name>
+    <display-name>Proxy User Group</display-name>
     <value>users</value>
     <property-type>GROUP</property-type>
     <description>Proxy user group.</description>
   </property>
   <property>
     <name>hdfs_user</name>
+    <display-name>HDFS User</display-name>
     <value>hdfs</value>
     <property-type>USER</property-type>
     <description>User to run HDFS as</description>
-  </property>
-  <property>
-    <name>dfs.datanode.data.dir.mount.file</name>
-    <value>/etc/hadoop/conf/dfs_data_dir_mount.hist</value>
-    <description>File path that contains the last known mount point for each data dir. This file is used to avoid creating a DFS data dir on the root drive (and filling it up) if a path was previously mounted on a drive.</description>
   </property>
 
   <!-- hadoop-env.sh -->

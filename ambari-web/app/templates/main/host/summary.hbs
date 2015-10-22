@@ -66,7 +66,7 @@
         {{/if}}
           {{!clients and add component button}}
           <div class="clients row-fluid">
-            <div class="span7 row">
+            <div class="span7 row client-list">
               {{#if view.clients.length}}
                   <div class="span3 align-right">{{t common.clients}}&nbsp;/</div>
                 <div class="span7">
@@ -174,15 +174,7 @@
         <div class="box">
           <div class="box-header">
             <h4>{{t hosts.host.summary.hostMetrics}}</h4>
-            {{#if App.router.clusterController.isGangliaInstalled}}
-              <div class="btn-group">
-                {{#if App.router.clusterController.isGangliaUrlLoaded}}
-                  <a class="btn" rel="tooltip" title="Go to Ganglia" {{action "showGangliaCharts" target="view"}}><i class="icon-link"></i></a>
-                {{else}}
-                  <div class="spinner"></div>
-                {{/if}}
-              </div>
-            {{/if}}
+            {{view view.timeRangeListView}}
           </div>
           <div>
            {{view App.MainHostMetricsView contentBinding="view.content"}}

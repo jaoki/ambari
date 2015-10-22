@@ -37,7 +37,6 @@ import junit.framework.Assert;
 import org.apache.ambari.server.AmbariException;
 import org.apache.ambari.server.configuration.Configuration.ConnectionPoolType;
 import org.apache.ambari.server.configuration.Configuration.DatabaseType;
-import org.apache.ambari.server.orm.InMemoryDefaultTestModule;
 import org.apache.ambari.server.security.authorization.LdapServerProperties;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.RandomStringUtils;
@@ -54,24 +53,14 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import com.google.inject.Guice;
-import com.google.inject.Inject;
-import com.google.inject.Injector;
-
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ Configuration.class })
 @PowerMockIgnore( {"javax.management.*", "javax.crypto.*"})
 public class ConfigurationTest {
   public TemporaryFolder temp = new TemporaryFolder();
-  private Injector injector;
-
-  @Inject
-  private Configuration config;
 
   @Before
   public void setup() throws Exception {
-    injector = Guice.createInjector(new InMemoryDefaultTestModule());
-    injector.injectMembers(this);
     temp.create();
   }
 
@@ -86,7 +75,7 @@ public class ConfigurationTest {
    */
   @Test
   public void testDefaultTwoWayAuthNotSet() throws Exception {
-    Assert.assertFalse(config.getTwoWaySsl());
+    Assert.assertFalse(new Configuration().getTwoWaySsl());
   }
 
   /**
@@ -495,5 +484,19 @@ public class ConfigurationTest {
 
     ambariProperties.setProperty(Configuration.AGENT_PACKAGE_PARALLEL_COMMANDS_LIMIT_KEY, "0");
     Assert.assertEquals(1, configuration.getAgentPackageParallelCommandsLimit());
+  }
+
+  @Test
+  public void testExperimentalConcurrentStageProcessing() throws Exception {
+    final Properties ambariProperties = new Properties();
+    final Configuration configuration = new Configuration(ambariProperties);
+
+    Assert.assertFalse(configuration.isExperimentalConcurrentStageProcessingEnabled());
+
+    ambariProperties.setProperty(Configuration.EXPERIMENTAL_CONCURRENCY_STAGE_PROCESSING_ENABLED,
+        Boolean.TRUE.toString());
+
+    Assert.assertTrue(configuration.isExperimentalConcurrentStageProcessingEnabled());
+
   }
 }

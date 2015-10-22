@@ -277,6 +277,17 @@ class TestHBaseMaster(RMFTestCase):
       content = InlineTemplate(self.getConfig()['configurations']['hbase-env']['content']),
       group = 'hadoop',
     )
+    self.assertResourceCalled('Directory', '/etc/security/limits.d',
+      owner = 'root',
+      group = 'root',
+      recursive = True,
+    )
+    self.assertResourceCalled('File', '/etc/security/limits.d/hbase.conf',
+      content = Template('hbase.conf.j2'),
+      owner = 'root',
+      group = 'root',
+      mode = 0644,
+    )
     self.assertResourceCalled('TemplateConfig', '/etc/hbase/conf/hadoop-metrics2-hbase.properties',
       owner = 'hbase',
       template_tag = 'GANGLIA-MASTER',
@@ -392,6 +403,17 @@ class TestHBaseMaster(RMFTestCase):
       owner = 'hbase',
       content = InlineTemplate(self.getConfig()['configurations']['hbase-env']['content']),
       group = 'hadoop',
+    )
+    self.assertResourceCalled('Directory', '/etc/security/limits.d',
+      owner = 'root',
+      group = 'root',
+      recursive = True,
+    )
+    self.assertResourceCalled('File', '/etc/security/limits.d/hbase.conf',
+      content = Template('hbase.conf.j2'),
+      owner = 'root',
+      group = 'root',
+      mode = 0644,
     )
     self.assertResourceCalled('TemplateConfig', '/etc/hbase/conf/hadoop-metrics2-hbase.properties',
       owner = 'hbase',
@@ -524,7 +546,17 @@ class TestHBaseMaster(RMFTestCase):
       content = InlineTemplate(self.getConfig()['configurations']['hbase-env']['content']),
       group = 'hadoop'
     )
-
+    self.assertResourceCalled('Directory', '/etc/security/limits.d',
+      owner = 'root',
+      group = 'root',
+      recursive = True,
+    )
+    self.assertResourceCalled('File', '/etc/security/limits.d/hbase.conf',
+      content = Template('hbase.conf.j2'),
+      owner = 'root',
+      group = 'root',
+      mode = 0644,
+    )
     self.assertResourceCalled('TemplateConfig', '/usr/hdp/current/hbase-master/conf/hadoop-metrics2-hbase.properties',
       owner = 'hbase',
       template_tag = 'GANGLIA-MASTER')
@@ -704,7 +736,7 @@ class TestHBaseMaster(RMFTestCase):
   def test_upgrade_backup(self):
     self.executeScript(self.COMMON_SERVICES_PACKAGE_DIR + "/scripts/hbase_upgrade.py",
                    classname = "HbaseMasterUpgrade",
-                   command = "snapshot",
+                   command = "take_snapshot",
                    config_file="hbase-preupgrade.json",
                    hdp_stack_version = self.STACK_VERSION,
                    target = RMFTestCase.TARGET_COMMON_SERVICES)
@@ -733,7 +765,7 @@ class TestHBaseMaster(RMFTestCase):
                        target = RMFTestCase.TARGET_COMMON_SERVICES,
                        mocks_dict = mocks_dict)
     self.assertResourceCalled('Execute',
-                              ('hdp-select', 'set', 'hbase-master', version), sudo=True,)
+                              ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hbase-master', version), sudo=True,)
     self.assertFalse(call_mock.called)
     self.assertNoMoreResources()
 
@@ -757,15 +789,15 @@ class TestHBaseMaster(RMFTestCase):
                        call_mocks = [(0, None), (0, None), (0, None), (0, None)],
                        mocks_dict = mocks_dict)
 
-    self.assertResourceCalled('Execute', ('hdp-select', 'set', 'hbase-master', version), sudo=True)
+    self.assertResourceCalled('Execute', ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hbase-master', version), sudo=True)
 
     self.assertEquals(1, mocks_dict['call'].call_count)
     self.assertEquals(3, mocks_dict['checked_call'].call_count)
 
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hbase', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hbase', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[1][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hbase', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hbase', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
 

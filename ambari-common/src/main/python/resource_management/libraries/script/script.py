@@ -96,7 +96,6 @@ class Script(object):
   basedir = ""
   stroutfile = ""
   logging_level = ""
-  logger = None
 
   # Class variable
   tmp_dir = ""
@@ -117,7 +116,7 @@ class Script(object):
             Script.structuredOut = json.load(fp)
           except Exception:
             errMsg = 'Unable to read structured output from ' + self.stroutfile
-            self.logger.warn(errMsg)
+            Logger.logger.exception(errMsg)
             pass
 
     # version is only set in a specific way and should not be carried
@@ -178,15 +177,12 @@ class Script(object):
     Sets up logging;
     Parses command parameters and executes method relevant to command type
     """
-    logger, chout, cherr = Logger.initialize_logger(__name__)
-    
     # parse arguments
     if len(sys.argv) < 7:
-     logger.error("Script expects at least 6 arguments")
+     print "Script expects at least 6 arguments"
      print USAGE.format(os.path.basename(sys.argv[0])) # print to stdout
      sys.exit(1)
-
-    self.logger = logger
+     
     self.command_name = str.lower(sys.argv[1])
     self.command_data_file = sys.argv[2]
     self.basedir = sys.argv[3]
@@ -196,8 +192,7 @@ class Script(object):
     Script.tmp_dir = sys.argv[6]
 
     logging_level_str = logging._levelNames[self.logging_level]
-    chout.setLevel(logging_level_str)
-    logger.setLevel(logging_level_str)
+    Logger.initialize_logger(__name__, logging_level=logging_level_str)
 
     # on windows we need to reload some of env variables manually because there is no default paths for configs(like
     # /etc/something/conf on linux. When this env vars created by one of the Script execution, they can not be updated
@@ -216,7 +211,7 @@ class Script(object):
             Script.passwords[get_path_from_configuration(k, Script.config)] = get_path_from_configuration(v, Script.config)
 
     except IOError:
-      logger.exception("Can not read json file with command parameters: ")
+      Logger.logger.exception("Can not read json file with command parameters: ")
       sys.exit(1)
 
     # Run class method depending on a command type
@@ -308,12 +303,26 @@ class Script(object):
     return format_hdp_stack_version(stack_version_unformatted)
 
   @staticmethod
+  def is_hdp_stack_greater(formatted_hdp_stack_version, compare_to_version):
+    """
+    Gets whether the provided formatted_hdp_stack_version (normalized)
+    is greater than the specified stack version
+    :param formatted_hdp_stack_version: the version of stack to compare
+    :param compare_to_version: the version of stack to compare to
+    :return: True if the command's stack is greater than the specified version
+    """
+    if formatted_hdp_stack_version is None or formatted_hdp_stack_version == "":
+      return False
+
+    return compare_versions(formatted_hdp_stack_version, compare_to_version) > 0
+
+  @staticmethod
   def is_hdp_stack_greater_or_equal(compare_to_version):
     """
     Gets whether the hostLevelParams/stack_version, after being normalized,
     is greater than or equal to the specified stack version
     :param compare_to_version: the version to compare to
-    :return: True if the command's stack is greater than the specified version
+    :return: True if the command's stack is greater than or equal the specified version
     """
     return Script.is_hdp_stack_greater_or_equal_to(Script.get_hdp_stack_version(), compare_to_version)
 
@@ -324,7 +333,7 @@ class Script(object):
     is greater than or equal to the specified stack version
     :param formatted_hdp_stack_version: the version of stack to compare
     :param compare_to_version: the version of stack to compare to
-    :return: True if the command's stack is greater than the specified version
+    :return: True if the command's stack is greater than or equal to the specified version
     """
     if formatted_hdp_stack_version is None or formatted_hdp_stack_version == "":
       return False

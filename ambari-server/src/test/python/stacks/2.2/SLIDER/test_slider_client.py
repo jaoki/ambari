@@ -66,6 +66,14 @@ class TestSliderClient(RMFTestCase):
                               mode=0644,
                               content='log4jproperties\nline2'
     )
+    self.assertResourceCalled('Execute', ('tar',
+     '-czvf',
+     '/usr/hdp/current/slider-client/slider.tar.gz',
+     '--exclude=slider-core*.jar',
+     '/usr/hdp/current/slider-client/lib'),
+        not_if = 'test -f /usr/hdp/current/slider-client/slider.tar.gz',
+        sudo = True,
+    )
 
     self.assertNoMoreResources()
 
@@ -115,8 +123,8 @@ class TestSliderClient(RMFTestCase):
                        hdp_stack_version = self.STACK_VERSION,
                        target = RMFTestCase.TARGET_COMMON_SERVICES)
 
-    self.assertResourceCalled("Execute", ('hdp-select', 'set', 'slider-client', '2.2.1.0-2067'), sudo=True)
-    self.assertResourceCalled("Execute", ('hdp-select', 'set', 'hadoop-client', '2.2.1.0-2067'), sudo=True)
+    self.assertResourceCalled("Execute", ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'slider-client', '2.2.1.0-2067'), sudo=True)
+    self.assertResourceCalled("Execute", ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-client', '2.2.1.0-2067'), sudo=True)
     self.assertNoMoreResources()
 
 
@@ -136,21 +144,21 @@ class TestSliderClient(RMFTestCase):
                        call_mocks = [(0, None), (0, None), (0, None), (0, None)],
                        mocks_dict = mocks_dict)
 
-    self.assertResourceCalled("Execute", ('hdp-select', 'set', 'slider-client', '2.3.0.0-1234'), sudo=True)
-    self.assertResourceCalled("Execute", ('hdp-select', 'set', 'hadoop-client', '2.3.0.0-1234'), sudo=True)
+    self.assertResourceCalled("Execute", ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'slider-client', '2.3.0.0-1234'), sudo=True)
+    self.assertResourceCalled("Execute", ('ambari-python-wrap', '/usr/bin/hdp-select', 'set', 'hadoop-client', '2.3.0.0-1234'), sudo=True)
     self.assertNoMoreResources()
 
     self.assertEquals(2, mocks_dict['call'].call_count)
     self.assertEquals(2, mocks_dict['checked_call'].call_count)
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'slider', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'slider', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'slider', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'slider', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[0][0][0])
     self.assertEquals(
-      ('conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'set-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['checked_call'].call_args_list[1][0][0])
     self.assertEquals(
-      ('conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
+      ('ambari-python-wrap', '/usr/bin/conf-select', 'create-conf-dir', '--package', 'hadoop', '--stack-version', '2.3.0.0-1234', '--conf-version', '0'),
        mocks_dict['call'].call_args_list[1][0][0])

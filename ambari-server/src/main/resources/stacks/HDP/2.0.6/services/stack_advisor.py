@@ -86,7 +86,8 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
       "MAPREDUCE2": self.recommendMapReduce2Configurations,
       "HDFS": self.recommendHDFSConfigurations,
       "HBASE": self.recommendHbaseConfigurations,
-      "AMBARI_METRICS": self.recommendAmsConfigurations
+      "AMBARI_METRICS": self.recommendAmsConfigurations,
+      "RANGER": self.recommendRangerConfigurations
     }
 
   def putProperty(self, config, configType, services=None):
@@ -104,11 +105,18 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
     if"properties" not in config[configType]:
       config[configType]["properties"] = {}
     def appendProperty(key, value):
-      if {'type': configType, 'name': key} in changedConfigs:
+      # If property exists in changedConfigs, do not override, use user defined property
+      if self.__isPropertyInChangedConfigs(configType, key, changedConfigs):
         config[configType]["properties"][key] = userConfigs[configType]['properties'][key]
       else:
         config[configType]["properties"][key] = str(value)
     return appendProperty
+
+  def __isPropertyInChangedConfigs(self, configType, propertyName, changedConfigs):
+    for changedConfig in changedConfigs:
+      if changedConfig['type']==configType and changedConfig['name']==propertyName:
+        return True
+    return False
 
   def putPropertyAttribute(self, config, configType):
     if configType not in config:
@@ -208,7 +216,7 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
 
       # Remove old properties if user was renamed
       userOldValue = getOldValue(self, services, user_properties["config"], user_properties["propertyName"])
-      if userOldValue is not None:
+      if userOldValue is not None and userOldValue != user_name:
         putCoreSitePropertyAttribute("hadoop.proxyuser.{0}.hosts".format(userOldValue), 'delete', 'true')
         putCoreSitePropertyAttribute("hadoop.proxyuser.{0}.groups".format(userOldValue), 'delete', 'true')
         services["forced-configurations"].append({"type" : "core-site", "name" : "hadoop.proxyuser.{0}.hosts".format(userOldValue)})
@@ -240,6 +248,63 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
       and 'hbase-env' in services['configurations'] and 'hbase_user' in services['configurations']['hbase-env']['properties'] \
       and services['configurations']['hbase-env']['properties']['hbase_user'] != services['configurations']['hbase-site']['properties']['hbase.superuser']:
       putHbaseSiteProperty("hbase.superuser", services['configurations']['hbase-env']['properties']['hbase_user'])
+
+
+  def recommendRangerConfigurations(self, configurations, clusterData, services, hosts):
+    ranger_sql_connector_dict = {
+      'MYSQL': '/usr/share/java/mysql-connector-java.jar',
+      'ORACLE': '/usr/share/java/ojdbc6.jar',
+      'POSTGRES': '/usr/share/java/postgresql.jar',
+      'MSSQL': '/usr/share/java/sqljdbc4.jar',
+      'SQLA': '/path_to_driver/sqla-client-jdbc.tar.gz'
+    }
+
+    putRangerAdminProperty = self.putProperty(configurations, "admin-properties", services)
+
+    if 'admin-properties' in services['configurations'] and 'DB_FLAVOR' in services['configurations']['admin-properties']['properties']:
+      rangerDbFlavor = services['configurations']["admin-properties"]["properties"]["DB_FLAVOR"]
+      rangerSqlConnectorProperty = ranger_sql_connector_dict.get(rangerDbFlavor, ranger_sql_connector_dict['MYSQL'])
+      putRangerAdminProperty('SQL_CONNECTOR_JAR', rangerSqlConnectorProperty)
+
+    # Build policymgr_external_url
+    protocol = 'http'
+    ranger_admin_host = 'localhost'
+    port = '6080'
+
+    # Check if http is disabled. For HDP-2.3 this can be checked in ranger-admin-site/ranger.service.http.enabled
+    # For HDP-2.2 this can be checked in ranger-site/http.enabled
+    if ('ranger-site' in services['configurations'] and 'http.enabled' in services['configurations']['ranger-site']['properties'] \
+      and services['configurations']['ranger-site']['properties']['http.enabled'].lower() == 'false') or \
+      ('ranger-admin-site' in services['configurations'] and 'ranger.service.http.enabled' in services['configurations']['ranger-admin-site']['properties'] \
+      and services['configurations']['ranger-admin-site']['properties']['ranger.service.http.enabled'].lower() == 'false'):
+      # HTTPS protocol is used
+      protocol = 'https'
+      # In HDP-2.3 port stored in ranger-admin-site ranger.service.https.port
+      if 'ranger-admin-site' in services['configurations'] and \
+          'ranger.service.https.port' in services['configurations']['ranger-admin-site']['properties']:
+        port = services['configurations']['ranger-admin-site']['properties']['ranger.service.https.port']
+      # In HDP-2.2 port stored in ranger-site https.service.port
+      elif 'ranger-site' in services['configurations'] and \
+          'https.service.port' in services['configurations']['ranger-site']['properties']:
+        port = services['configurations']['ranger-site']['properties']['https.service.port']
+    else:
+      # HTTP protocol is used
+      # In HDP-2.3 port stored in ranger-admin-site ranger.service.http.port
+      if 'ranger-admin-site' in services['configurations'] and \
+          'ranger.service.http.port' in services['configurations']['ranger-admin-site']['properties']:
+        port = services['configurations']['ranger-admin-site']['properties']['ranger.service.http.port']
+      # In HDP-2.2 port stored in ranger-site http.service.port
+      elif 'ranger-site' in services['configurations'] and \
+          'http.service.port' in services['configurations']['ranger-site']['properties']:
+        port = services['configurations']['ranger-site']['properties']['http.service.port']
+
+    ranger_admin_hosts = self.getComponentHostNames(services, "RANGER", "RANGER_ADMIN")
+    if ranger_admin_hosts:
+      ranger_admin_host = ranger_admin_hosts[0]
+
+    policymgr_external_url = "%s://%s:%s" % (protocol, ranger_admin_host, port)
+    putRangerAdminProperty('policymgr_external_url', policymgr_external_url)
+
 
   def getAmsMemoryRecommendation(self, services, hosts):
     # MB per sink in hbase heapsize
@@ -325,7 +390,7 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
 
     collector_heapsize, hbase_heapsize, total_sinks_count = self.getAmsMemoryRecommendation(services, hosts)
 
-    putAmsEnvProperty("metrics_collector_heapsize", str(collector_heapsize) + "m")
+    putAmsEnvProperty("metrics_collector_heapsize", collector_heapsize)
 
     # blockCache = 0.3, memstore = 0.35, phoenix-server = 0.15, phoenix-client = 0.25
     putAmsHbaseSiteProperty("hfile.block.cache.size", 0.3)
@@ -347,27 +412,36 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
         putAmsHbaseSiteProperty("hbase.regionserver.global.memstore.lowerLimit", 0.25)
         putAmsHbaseSiteProperty("phoenix.query.maxGlobalMemoryPercentage", 20)
         putTimelineServiceProperty("phoenix.query.maxGlobalMemoryPercentage", 30)
-        hbase_xmn_size = '512m'
+        hbase_xmn_size = '512'
       elif total_sinks_count >= 500:
         putAmsHbaseSiteProperty("hbase.regionserver.handler.count", 60)
         putAmsHbaseSiteProperty("hbase.regionserver.hlog.blocksize", 134217728)
         putAmsHbaseSiteProperty("hbase.regionserver.maxlogs", 64)
         putAmsHbaseSiteProperty("hbase.hregion.memstore.flush.size", 268435456)
-        hbase_xmn_size = '512m'
+        hbase_xmn_size = '512'
       elif total_sinks_count >= 250:
-        hbase_xmn_size = '256m'
+        hbase_xmn_size = '256'
       else:
-        hbase_xmn_size = '128m'
+        hbase_xmn_size = '128'
       pass
 
     # Embedded mode heap size : master + regionserver
     if rootDir.startswith("hdfs://"):
-      putHbaseEnvProperty("hbase_master_heapsize", "512m")
-      putHbaseEnvProperty("hbase_regionserver_heapsize", str(hbase_heapsize) + "m")
+      putHbaseEnvProperty("hbase_master_heapsize", "512")
+      putHbaseEnvProperty("hbase_regionserver_heapsize", hbase_heapsize)
       putHbaseEnvProperty("regionserver_xmn_size", hbase_xmn_size)
     else:
-      putHbaseEnvProperty("hbase_master_heapsize", str(hbase_heapsize) + "m")
+      putHbaseEnvProperty("hbase_master_heapsize", hbase_heapsize)
       putHbaseEnvProperty("hbase_master_xmn_size", hbase_xmn_size)
+
+    # If no local DN in distributed mode
+    if rootDir.startswith("hdfs://"):
+      dn_hosts = self.getComponentHostNames(services, "HDFS", "DATANODE")
+      if set(amsCollectorHosts).intersection(dn_hosts):
+        collector_cohosted_with_dn = "true"
+      else:
+        collector_cohosted_with_dn = "false"
+      putAmsHbaseSiteProperty("dfs.client.read.shortcircuit", collector_cohosted_with_dn)
 
     #split points
     scriptDir = os.path.dirname(os.path.abspath(__file__))
@@ -409,6 +483,18 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
 
     pass
 
+  def getHostNamesWithComponent(self, serviceName, componentName, services):
+    """
+    Returns the list of hostnames on which service component is installed
+    """
+    if services is not None and serviceName in [service["StackServices"]["service_name"] for service in services["services"]]:
+      service = [serviceEntry for serviceEntry in services["services"] if serviceEntry["StackServices"]["service_name"] == serviceName][0]
+      components = [componentEntry for componentEntry in service["components"] if componentEntry["StackServiceComponents"]["component_name"] == componentName]
+      if (len(components) > 0 and len(components[0]["StackServiceComponents"]["hostnames"]) > 0):
+        componentHostnames = components[0]["StackServiceComponents"]["hostnames"]
+        return componentHostnames
+    return []
+
   def getHostsWithComponent(self, serviceName, componentName, services, hosts):
     if services is not None and hosts is not None and serviceName in [service["StackServices"]["service_name"] for service in services["services"]]:
       service = [serviceEntry for serviceEntry in services["services"] if serviceEntry["StackServices"]["service_name"] == serviceName][0]
@@ -433,6 +519,27 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
                               if componentEntry["StackServiceComponents"]["component_category"] in categories
                               and hostname in componentEntry["StackServiceComponents"]["hostnames"]])
     return components
+
+  def getZKHostPortString(self, services):
+    """
+    Returns the comma delimited string of zookeeper server host with the configure port installed in a cluster
+    Example: zk.host1.org:2181,zk.host2.org:2181,zk.host3.org:2181
+    """
+    servicesList = [service["StackServices"]["service_name"] for service in services["services"]]
+    include_zookeeper = "ZOOKEEPER" in servicesList
+    zookeeper_host_port = ''
+
+    if include_zookeeper:
+      zookeeper_hosts = self.getHostNamesWithComponent("ZOOKEEPER", "ZOOKEEPER_SERVER", services)
+      zookeeper_port = 2181     #default port
+      if 'zoo.cfg' in services['configurations'] and ('clientPort' in services['configurations']['zoo.cfg']['properties']):
+        zookeeper_port = services['configurations']['zoo.cfg']['properties']['clientPort']
+
+      zookeeper_host_port_arr = []
+      for i in range(len(zookeeper_hosts)):
+        zookeeper_host_port_arr.append(zookeeper_hosts[i] + ':' + zookeeper_port)
+      zookeeper_host_port = ",".join(zookeeper_host_port_arr)
+    return zookeeper_host_port
 
   def getConfigurationClusterSummary(self, servicesList, hosts, components, services):
 
@@ -651,6 +758,7 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
           validationItems.extend([{"config-name": 'hbase.rootdir', "item": self.validatorNotRootFs(properties, recommendedDefaults, 'hbase.rootdir', host["Hosts"])}])
           validationItems.extend([{"config-name": 'hbase.tmp.dir', "item": self.validatorNotRootFs(properties, recommendedDefaults, 'hbase.tmp.dir', host["Hosts"])}])
 
+          dn_hosts = self.getComponentHostNames(services, "HDFS", "DATANODE")
           if not hbase_rootdir.startswith("hdfs"):
             mountPoints = []
             for mountPoint in host["Hosts"]["disk_info"]:
@@ -669,7 +777,6 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
             # if METRICS_COLLECTOR is co-hosted with DATANODE
             # cross-check dfs.datanode.data.dir and hbase.rootdir
             # they shouldn't share same disk partition IO
-            dn_hosts = self.getComponentHostNames(services, "HDFS", "DATANODE")
             hdfs_site = getSiteProperties(configurations, "hdfs-site")
             dfs_datadirs = hdfs_site.get("dfs.datanode.data.dir").split(",") if hdfs_site and "dfs.datanode.data.dir" in hdfs_site else []
             if dn_hosts and collectorHostName in dn_hosts and ams_site and \
@@ -679,8 +786,18 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
                 if dfs_datadir_mountpoint == hbase_rootdir_mountpoint:
                   item = self.getWarnItem("Consider not using {0} partition for storing metrics data. "
                                           "{0} is already used by datanode to store HDFS data".format(hbase_rootdir_mountpoint))
-                  validationItems.extend([{"config-name":'hbase.rootdir', "item": item}])
+                  validationItems.extend([{"config-name": 'hbase.rootdir', "item": item}])
                   break
+          # If no local DN in distributed mode
+          elif collectorHostName not in dn_hosts and distributed.lower() == "true":
+            item = self.getWarnItem("It's recommended to install Datanode component on {0} "
+                                    "to speed up IO operations between HDFS and Metrics "
+                                    "Collector in distributed mode ".format(collectorHostName))
+            validationItems.extend([{"config-name": "hbase.cluster.distributed", "item": item}])
+          # Short circuit read should be enabled in distibuted mode
+          # if local DN installed
+          else:
+            validationItems.extend([{"config-name": "dfs.client.read.shortcircuit", "item": self.validatorEqualsToRecommendedItem(properties, recommendedDefaults, "dfs.client.read.shortcircuit")}])
 
     return self.toConfigurationValidationProblems(validationItems, "ams-hbase-site")
 
@@ -757,16 +874,8 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
             validationItems.extend([{"config-name": heapPropertyToIncrease, "item": unusedMemoryHbaseItem}])
       pass
 
-    # Check RS memory in distributed mode since we set default as 512m
-    hbase_site = getSiteProperties(configurations, "ams-hbase-site")
-    hbase_rootdir = hbase_site.get("hbase.rootdir")
-    regionServerMinMemItem = None
-    if hbase_rootdir and hbase_rootdir.startswith("hdfs://"):
-      regionServerMinMemItem = self.validateMinMemorySetting(properties, 1024, 'hbase_regionserver_heapsize')
-
     validationItems.extend([
       {"config-name": "hbase_regionserver_heapsize", "item": regionServerItem},
-      {"config-name": "hbase_regionserver_heapsize", "item": regionServerMinMemItem},
       {"config-name": "hbase_master_heapsize", "item": masterItem},
       {"config-name": "hbase_master_heapsize", "item": masterHostItem},
       {"config-name": "hbase_log_dir", "item": logDirItem}
@@ -888,6 +997,19 @@ class HDP206StackAdvisor(DefaultStackAdvisor):
       return self.getWarnItem("It is recommended to set equal values "
              "for properties {0} and {1}".format(propertyName1, propertyName2))
 
+    return None
+
+  def validatorEqualsToRecommendedItem(self, properties, recommendedDefaults,
+                                       propertyName):
+    if not propertyName in properties:
+      return self.getErrorItem("Value should be set for %s" % propertyName)
+    value = properties.get(propertyName)
+    if not propertyName in recommendedDefaults:
+      return self.getErrorItem("Value should be recommended for %s" % propertyName)
+    recommendedValue = recommendedDefaults.get(propertyName)
+    if value != recommendedValue:
+      return self.getWarnItem("It is recommended to set value {0} "
+             "for property {1}".format(recommendedValue, propertyName))
     return None
 
   def validateMinMemorySetting(self, properties, defaultValue, propertyName):
@@ -1167,10 +1289,10 @@ def getHeapsizeProperties():
                                  "default": "1024m"}],
            "METRICS_COLLECTOR": [{"config-name": "ams-hbase-env",
                                    "property": "hbase_master_heapsize",
-                                   "default": "1024m"},
+                                   "default": "1024"},
                                  {"config-name": "ams-env",
                                    "property": "metrics_collector_heapsize",
-                                   "default": "512m"}],
+                                   "default": "512"}],
            }
 
 def getMemorySizeRequired(components, configurations):

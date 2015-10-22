@@ -29,8 +29,8 @@ delimiter ;
 
 CREATE TABLE stack(
   stack_id BIGINT NOT NULL,
-  stack_name VARCHAR(255) NOT NULL,
-  stack_version VARCHAR(255) NOT NULL,
+  stack_name VARCHAR(100) NOT NULL,
+  stack_version VARCHAR(100) NOT NULL,
   PRIMARY KEY (stack_id)
 );
 
@@ -48,9 +48,9 @@ CREATE TABLE clusters (
 
 CREATE TABLE clusterconfig (
   config_id BIGINT NOT NULL,
-  version_tag VARCHAR(255) NOT NULL,
+  version_tag VARCHAR(100) NOT NULL,
   version BIGINT NOT NULL,
-  type_name VARCHAR(255) NOT NULL,
+  type_name VARCHAR(100) NOT NULL,
   cluster_id BIGINT NOT NULL,
   stack_id BIGINT NOT NULL,
   config_data LONGTEXT NOT NULL,
@@ -107,11 +107,11 @@ CREATE TABLE cluster_version (
 
 CREATE TABLE hostcomponentdesiredstate (
   cluster_id BIGINT NOT NULL,
-  component_name VARCHAR(255) NOT NULL,
+  component_name VARCHAR(100) NOT NULL,
   desired_stack_id BIGINT NOT NULL,
   desired_state VARCHAR(255) NOT NULL,
   host_id BIGINT NOT NULL,
-  service_name VARCHAR(255) NOT NULL,
+  service_name VARCHAR(100) NOT NULL,
   admin_state VARCHAR(32),
   maintenance_state VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
   security_state VARCHAR(32) NOT NULL DEFAULT 'UNSECURED',
@@ -122,12 +122,12 @@ CREATE TABLE hostcomponentdesiredstate (
 CREATE TABLE hostcomponentstate (
   id BIGINT NOT NULL,
   cluster_id BIGINT NOT NULL,
-  component_name VARCHAR(255) NOT NULL,
+  component_name VARCHAR(100) NOT NULL,
   version VARCHAR(32) NOT NULL DEFAULT 'UNKNOWN',
   current_stack_id BIGINT NOT NULL,
   current_state VARCHAR(255) NOT NULL,
   host_id BIGINT NOT NULL,
-  service_name VARCHAR(255) NOT NULL,
+  service_name VARCHAR(100) NOT NULL,
   upgrade_state VARCHAR(32) NOT NULL DEFAULT 'NONE',
   security_state VARCHAR(32) NOT NULL DEFAULT 'UNSECURED',
   CONSTRAINT pk_hostcomponentstate PRIMARY KEY (id)
@@ -172,11 +172,11 @@ CREATE TABLE host_version (
   PRIMARY KEY (id));
 
 CREATE TABLE servicecomponentdesiredstate (
-  component_name VARCHAR(255) NOT NULL,
+  component_name VARCHAR(100) NOT NULL,
   cluster_id BIGINT NOT NULL,
   desired_stack_id BIGINT NOT NULL,
   desired_state VARCHAR(255) NOT NULL,
-  service_name VARCHAR(255) NOT NULL,
+  service_name VARCHAR(100) NOT NULL,
   PRIMARY KEY (component_name, cluster_id, service_name)
 );
 
@@ -339,9 +339,9 @@ CREATE TABLE ambari_sequences (
 CREATE TABLE confgroupclusterconfigmapping (
   config_group_id BIGINT NOT NULL,
   cluster_id BIGINT NOT NULL,
-  config_type VARCHAR(255) NOT NULL,
-  version_tag VARCHAR(255) NOT NULL,
-  user_name VARCHAR(255) DEFAULT '_db',
+  config_type VARCHAR(100) NOT NULL,
+  version_tag VARCHAR(100) NOT NULL,
+  user_name VARCHAR(100) DEFAULT '_db',
   create_timestamp BIGINT NOT NULL,
   PRIMARY KEY(config_group_id, cluster_id, config_type));
 
@@ -401,28 +401,28 @@ CREATE TABLE blueprint (
 );
 
 CREATE TABLE hostgroup (
-  blueprint_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  blueprint_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
   cardinality VARCHAR(255) NOT NULL,
   PRIMARY KEY(blueprint_name, name));
 
 CREATE TABLE hostgroup_component (
-  blueprint_name VARCHAR(255) NOT NULL,
-  hostgroup_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  blueprint_name VARCHAR(100) NOT NULL,
+  hostgroup_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
   PRIMARY KEY(blueprint_name, hostgroup_name, name));
 
 CREATE TABLE blueprint_configuration (
-  blueprint_name VARCHAR(255) NOT NULL,
-  type_name VARCHAR(255) NOT NULL,
+  blueprint_name VARCHAR(100) NOT NULL,
+  type_name VARCHAR(100) NOT NULL,
   config_data LONGTEXT NOT NULL,
   config_attributes LONGTEXT,
   PRIMARY KEY(blueprint_name, type_name));
 
 CREATE TABLE hostgroup_configuration (
-  blueprint_name VARCHAR(255) NOT NULL,
-  hostgroup_name VARCHAR(255) NOT NULL,
-  type_name VARCHAR(255) NOT NULL,
+  blueprint_name VARCHAR(100) NOT NULL,
+  hostgroup_name VARCHAR(100) NOT NULL,
+  type_name VARCHAR(100) NOT NULL,
   config_data LONGTEXT NOT NULL,
   config_attributes LONGTEXT,
   PRIMARY KEY(blueprint_name, hostgroup_name, type_name));
@@ -443,18 +443,18 @@ CREATE TABLE viewmain (
 
 CREATE TABLE viewinstancedata (
   view_instance_id BIGINT,
-  view_name VARCHAR(255) NOT NULL,
-  view_instance_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  user_name VARCHAR(255) NOT NULL,
+  view_name VARCHAR(100) NOT NULL,
+  view_instance_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  user_name VARCHAR(100) NOT NULL,
   value VARCHAR(2000),
   PRIMARY KEY(VIEW_INSTANCE_ID, NAME, USER_NAME));
 
 CREATE TABLE viewinstance (
   view_instance_id BIGINT,
   resource_id BIGINT NOT NULL,
-  view_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  view_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
   label VARCHAR(255),
   description VARCHAR(2048),
   visible CHAR(1),
@@ -466,15 +466,15 @@ CREATE TABLE viewinstance (
   PRIMARY KEY(view_instance_id));
 
 CREATE TABLE viewinstanceproperty (
-  view_name VARCHAR(255) NOT NULL,
-  view_instance_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  view_name VARCHAR(100) NOT NULL,
+  view_instance_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
   value VARCHAR(2000),
   PRIMARY KEY(view_name, view_instance_name, name));
 
 CREATE TABLE viewparameter (
-  view_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  view_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
   description VARCHAR(2048),
   label VARCHAR(255),
   placeholder VARCHAR(255),
@@ -485,8 +485,8 @@ CREATE TABLE viewparameter (
   PRIMARY KEY(view_name, name));
 
 CREATE TABLE viewresource (
-  view_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  view_name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
   plural_name VARCHAR(255),
   id_property VARCHAR(255),
   subResource_names VARCHAR(255),
@@ -497,8 +497,8 @@ CREATE TABLE viewresource (
 
 CREATE TABLE viewentity (
   id BIGINT NOT NULL,
-  view_name VARCHAR(255) NOT NULL,
-  view_instance_name VARCHAR(255) NOT NULL,
+  view_name VARCHAR(100) NOT NULL,
+  view_instance_name VARCHAR(100) NOT NULL,
   class_name VARCHAR(255) NOT NULL,
   id_property VARCHAR(255),
   PRIMARY KEY(id));
@@ -541,7 +541,6 @@ CREATE TABLE repo_version (
   stack_id BIGINT NOT NULL,
   version VARCHAR(255) NOT NULL,
   display_name VARCHAR(128) NOT NULL,
-  upgrade_package VARCHAR(255) NOT NULL,
   repositories LONGTEXT NOT NULL,
   PRIMARY KEY(repo_version_id)
 );
@@ -581,8 +580,8 @@ CREATE TABLE widget_layout_user_widget (
 );
 
 CREATE TABLE artifact (
-  artifact_name VARCHAR(255) NOT NULL,
-  foreign_keys VARCHAR(255) NOT NULL,
+  artifact_name VARCHAR(100) NOT NULL,
+  foreign_keys VARCHAR(100) NOT NULL,
   artifact_data LONGTEXT NOT NULL,
   PRIMARY KEY(artifact_name, foreign_keys));
 
@@ -759,6 +758,13 @@ CREATE TABLE kerberos_principal_host (
   PRIMARY KEY(principal_name, host_id)
 );
 
+CREATE TABLE kerberos_descriptor
+(
+   kerberos_descriptor_name   VARCHAR(255) NOT NULL,
+   kerberos_descriptor        TEXT NOT NULL,
+   PRIMARY KEY (kerberos_descriptor_name)
+);
+
 ALTER TABLE kerberos_principal_host ADD CONSTRAINT FK_krb_pr_host_id FOREIGN KEY (host_id) REFERENCES hosts (host_id);
 ALTER TABLE kerberos_principal_host ADD CONSTRAINT FK_krb_pr_host_principalname FOREIGN KEY (principal_name) REFERENCES kerberos_principal (principal_name);
 -- Kerberos (end)
@@ -883,6 +889,11 @@ CREATE TABLE upgrade (
   from_version VARCHAR(255) DEFAULT '' NOT NULL,
   to_version VARCHAR(255) DEFAULT '' NOT NULL,
   direction VARCHAR(255) DEFAULT 'UPGRADE' NOT NULL,
+  upgrade_package VARCHAR(255) NOT NULL,
+  upgrade_type VARCHAR(32) NOT NULL,
+  skip_failures TINYINT(1) NOT NULL DEFAULT 0,
+  skip_sc_failures TINYINT(1) NOT NULL DEFAULT 0,
+  downgrade_allowed TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (upgrade_id),
   FOREIGN KEY (cluster_id) REFERENCES clusters(cluster_id),
   FOREIGN KEY (request_id) REFERENCES request(request_id)
@@ -994,9 +1005,9 @@ insert into metainfo(`metainfo_key`, `metainfo_value`)
 
 CREATE TABLE QRTZ_JOB_DETAILS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
-  JOB_NAME  VARCHAR(200) NOT NULL,
-  JOB_GROUP VARCHAR(200) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
+  JOB_NAME  VARCHAR(100) NOT NULL,
+  JOB_GROUP VARCHAR(100) NOT NULL,
   DESCRIPTION VARCHAR(250) NULL,
   JOB_CLASS_NAME   VARCHAR(250) NOT NULL,
   IS_DURABLE VARCHAR(1) NOT NULL,
@@ -1009,11 +1020,11 @@ CREATE TABLE QRTZ_JOB_DETAILS
 
 CREATE TABLE QRTZ_TRIGGERS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
-  TRIGGER_NAME VARCHAR(200) NOT NULL,
-  TRIGGER_GROUP VARCHAR(200) NOT NULL,
-  JOB_NAME  VARCHAR(200) NOT NULL,
-  JOB_GROUP VARCHAR(200) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_GROUP VARCHAR(100) NOT NULL,
+  JOB_NAME  VARCHAR(100) NOT NULL,
+  JOB_GROUP VARCHAR(100) NOT NULL,
   DESCRIPTION VARCHAR(250) NULL,
   NEXT_FIRE_TIME BIGINT(13) NULL,
   PREV_FIRE_TIME BIGINT(13) NULL,
@@ -1032,9 +1043,9 @@ CREATE TABLE QRTZ_TRIGGERS
 
 CREATE TABLE QRTZ_SIMPLE_TRIGGERS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
-  TRIGGER_NAME VARCHAR(200) NOT NULL,
-  TRIGGER_GROUP VARCHAR(200) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_GROUP VARCHAR(100) NOT NULL,
   REPEAT_COUNT BIGINT(7) NOT NULL,
   REPEAT_INTERVAL BIGINT(12) NOT NULL,
   TIMES_TRIGGERED BIGINT(10) NOT NULL,
@@ -1045,9 +1056,9 @@ CREATE TABLE QRTZ_SIMPLE_TRIGGERS
 
 CREATE TABLE QRTZ_CRON_TRIGGERS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
-  TRIGGER_NAME VARCHAR(200) NOT NULL,
-  TRIGGER_GROUP VARCHAR(200) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_GROUP VARCHAR(100) NOT NULL,
   CRON_EXPRESSION VARCHAR(200) NOT NULL,
   TIME_ZONE_ID VARCHAR(80),
   PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
@@ -1057,9 +1068,9 @@ CREATE TABLE QRTZ_CRON_TRIGGERS
 
 CREATE TABLE QRTZ_SIMPROP_TRIGGERS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
-  TRIGGER_NAME VARCHAR(200) NOT NULL,
-  TRIGGER_GROUP VARCHAR(200) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_GROUP VARCHAR(100) NOT NULL,
   STR_PROP_1 VARCHAR(512) NULL,
   STR_PROP_2 VARCHAR(512) NULL,
   STR_PROP_3 VARCHAR(512) NULL,
@@ -1078,9 +1089,9 @@ CREATE TABLE QRTZ_SIMPROP_TRIGGERS
 
 CREATE TABLE QRTZ_BLOB_TRIGGERS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
-  TRIGGER_NAME VARCHAR(200) NOT NULL,
-  TRIGGER_GROUP VARCHAR(200) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_GROUP VARCHAR(100) NOT NULL,
   BLOB_DATA BLOB NULL,
   PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
   FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
@@ -1104,17 +1115,17 @@ CREATE TABLE QRTZ_PAUSED_TRIGGER_GRPS
 
 CREATE TABLE QRTZ_FIRED_TRIGGERS
 (
-  SCHED_NAME VARCHAR(120) NOT NULL,
+  SCHED_NAME VARCHAR(100) NOT NULL,
   ENTRY_ID VARCHAR(95) NOT NULL,
-  TRIGGER_NAME VARCHAR(200) NOT NULL,
-  TRIGGER_GROUP VARCHAR(200) NOT NULL,
+  TRIGGER_NAME VARCHAR(100) NOT NULL,
+  TRIGGER_GROUP VARCHAR(100) NOT NULL,
   INSTANCE_NAME VARCHAR(200) NOT NULL,
   FIRED_TIME BIGINT(13) NOT NULL,
   SCHED_TIME BIGINT(13) NOT NULL,
   PRIORITY INTEGER NOT NULL,
   STATE VARCHAR(16) NOT NULL,
-  JOB_NAME VARCHAR(200) NULL,
-  JOB_GROUP VARCHAR(200) NULL,
+  JOB_NAME VARCHAR(100) NULL,
+  JOB_GROUP VARCHAR(100) NULL,
   IS_NONCONCURRENT VARCHAR(1) NULL,
   REQUESTS_RECOVERY VARCHAR(1) NULL,
   PRIMARY KEY (SCHED_NAME,ENTRY_ID)

@@ -27,6 +27,7 @@
     <description>Hadoop Log Dir Prefix</description>
     <display-name>Hadoop Log Dir Prefix</display-name>
     <value-attributes>
+      <type>directory</type>
       <overridable>false</overridable>
       <editable-only-at-install>true</editable-only-at-install>
     </value-attributes>
@@ -37,6 +38,7 @@
     <display-name>Hadoop PID Dir Prefix</display-name>
     <description>Hadoop PID Dir Prefix</description>
     <value-attributes>
+      <type>directory</type>
       <overridable>false</overridable>
       <editable-only-at-install>true</editable-only-at-install>
     </value-attributes>
@@ -56,6 +58,7 @@
     <description>Hadoop maximum Java heap size</description>
     <display-name>Hadoop maximum Java heap size</display-name>
     <value-attributes>
+      <type>int</type>
       <unit>MB</unit>
       <overridable>false</overridable>
     </value-attributes>
@@ -163,23 +166,18 @@
   </property>
   <property>
     <name>proxyuser_group</name>
+    <display-name>Proxy User Group</display-name>
     <value>users</value>
     <property-type>GROUP</property-type>
     <description>Proxy user group.</description>
   </property>
   <property>
     <name>hdfs_user</name>
+    <display-name>HDFS User</display-name>
     <value>hdfs</value>
     <property-type>USER</property-type>
     <description>User to run HDFS as</description>
   </property>
-  <property>
-    <name>dfs.datanode.data.dir.mount.file</name>
-    <value>/etc/hadoop/conf/dfs_data_dir_mount.hist</value>
-    <display-name>File that stores mount point for each data dir</display-name>
-    <description>File path that contains the last known mount point for each data dir. This file is used to avoid creating a DFS data dir on the root drive (and filling it up) if a path was previously mounted on a drive.</description>
-  </property>
-
   <property>
     <name>hdfs_user_nofile_limit</name>
     <value>128000</value>
@@ -323,6 +321,14 @@ export HADOOP_LIBEXEC_DIR={{hadoop_libexec_dir}}
 
 #Mostly required for hadoop 2.0
 export JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH}:/usr/lib/hadoop/lib/native/Linux-amd64-64
+
+{% if is_datanode_max_locked_memory_set %}
+# Fix temporary bug, when ulimit from conf files is not picked up, without full relogin. 
+# Makes sense to fix only when runing DN as root 
+if [ "$command" == "datanode" ] &#038;&#038; [ "$EUID" -eq 0 ] &#038;&#038; [ -n "$HADOOP_SECURE_DN_USER" ]; then
+  ulimit -l {{datanode_max_locked_memory}}
+fi
+{% endif %}
     </value>
   </property>
   

@@ -20,6 +20,7 @@
 // load all mixins here
 
 require('mixins/common/blueprint');
+require('mixins/common/kdc_credentials_controller_mixin');
 require('mixins/common/localStorage');
 require('mixins/common/userPref');
 require('mixins/common/reload_popup');
@@ -27,6 +28,9 @@ require('mixins/common/serverValidator');
 require('mixins/common/table_server_view_mixin');
 require('mixins/common/table_server_mixin');
 require('mixins/main/host/details/host_components/decommissionable');
+require('mixins/main/host/details/host_components/install_component');
+require('mixins/main/host/details/actions/install_new_version');
+require('mixins/main/host/details/support_client_configs_download');
 require('mixins/main/service/groups_mapping');
 require('mixins/main/service/themes_mapping');
 require('mixins/main/service/versions_mapping');
@@ -46,6 +50,8 @@ require('mixins/common/configs/configs_saver');
 require('mixins/common/configs/configs_loader');
 require('mixins/common/configs/configs_comparator');
 require('mixins/common/configs/toggle_isrequired');
+require('mixins/common/widgets/export_metrics_mixin');
+require('mixins/common/widgets/time_range_mixin');
 require('mixins/common/widgets/widget_mixin');
 require('mixins/common/widgets/widget_section');
 require('mixins/unit_convert/base_unit_convert_mixin');

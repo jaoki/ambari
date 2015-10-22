@@ -19,7 +19,7 @@
 var App = require('app');
 var filters = require('views/common/filter_view');
 
-App.MainDashboardWidgetsView = Em.View.extend(App.UserPref, App.LocalStorage, {
+App.MainDashboardWidgetsView = Em.View.extend(App.UserPref, App.LocalStorage, App.TimeRangeMixin, {
 
   name: 'mainDashboardWidgetsView',
 
@@ -50,6 +50,8 @@ App.MainDashboardWidgetsView = Em.View.extend(App.UserPref, App.LocalStorage, {
    * @type {boolean}
    */
   isMoving: false,
+
+  timeRangeClassName: 'pull-left',
 
   /**
    * Make widgets' list sortable on New Dashboard style
@@ -511,13 +513,6 @@ App.MainDashboardWidgetsView = Em.View.extend(App.UserPref, App.LocalStorage, {
       self.translateToReal(self.get('initPrefObject'));
     });
   },
-
-  /**
-   * @type {string}
-   */
-  gangliaUrl: function () {
-    return App.router.get('clusterController.gangliaUrl') + "/?r=hour&cs=&ce=&m=&s=by+name&c=HDPSlaves&tab=m&vn=";
-  }.property('App.router.clusterController.gangliaUrl'),
 
   showAlertsPopup: Em.K
 

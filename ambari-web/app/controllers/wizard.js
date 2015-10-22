@@ -238,6 +238,13 @@ App.WizardController = Em.Controller.extend(App.LocalStorage, App.ThemesMappingM
     return this.get('currentStep') == 10;
   }.property('currentStep'),
 
+  /**
+   * Move user to the selected step
+   *
+   * @param {number} step number of the step, where user is moved
+   * @param {boolean} disableNaviWarning true - don't show warning about moving more than 1 step back
+   * @returns {boolean}
+   */
   gotoStep: function (step, disableNaviWarning) {
     if (this.get('isStepDisabled').findProperty('step', step).get('value') !== false) {
       return false;
@@ -481,13 +488,23 @@ App.WizardController = Em.Controller.extend(App.LocalStorage, App.ThemesMappingM
        * otherwise notify error and enable buttons to close popup
        * @param requestId
        * @param serverError
+       * @param status
+       * @param log
        */
-      finishLoading: function (requestId, serverError) {
-        if (Em.isNone(requestId)) {
-          this.set('isError', true);
-          this.set('showFooter', true);
-          this.set('showCloseButton', true);
-          this.set('serverError', serverError);
+      finishLoading: function (requestId, serverError, status, log) {
+        if (Em.isNone(requestId) || status == 'ERROR') {
+          var stepController = App.get('router.wizardStep3Controller');
+          this.setProperties({
+            isError: true,
+            showFooter: true,
+            showCloseButton: true,
+            serverError: status == 'ERROR' ? log : serverError
+          });
+          stepController.setProperties({
+            isRegistrationInProgress: false,
+            isBootstrapFailed: true
+          });
+          stepController.get('hosts').setEach('bootStatus', 'FAILED');
         } else {
           callback(requestId);
           this.hide();
@@ -518,7 +535,7 @@ App.WizardController = Em.Controller.extend(App.LocalStorage, App.ThemesMappingM
 
   launchBootstrapSuccessCallback: function (data, opt, params) {
     console.log("TRACE: POST bootstrap succeeded");
-    params.popup.finishLoading(data.requestId, null);
+    params.popup.finishLoading(data.requestId, null, data.status, data.log);
   },
 
   launchBootstrapErrorCallback: function (request, ajaxOptions, error, opt, params) {
@@ -887,7 +904,6 @@ App.WizardController = Em.Controller.extend(App.LocalStorage, App.ThemesMappingM
     var fileNamesToUpdate = this.getDBProperty('fileNamesToUpdate') || [];
     var installedServiceNames = stepController.get('installedServiceNames') || [];
     var installedServiceNamesMap = {};
-    var notAllowed = ['masterHost', 'masterHosts', 'slaveHosts', 'slaveHost'];
     installedServiceNames.forEach(function(name) {
       installedServiceNamesMap[name] = true;
     });
@@ -916,7 +932,7 @@ App.WizardController = Em.Controller.extend(App.LocalStorage, App.ThemesMappingM
         // get only modified configs
         var configs = _content.get('configs').filter(function (config) {
           if (config.get('isNotDefaultValue') || (config.get('savedValue') === null)) {
-            return !notAllowed.contains(config.get('displayType')) && !!config.filename && config.isRequiredByAgent!== false;
+            return config.isRequiredByAgent!== false;
           }
           return false;
         });

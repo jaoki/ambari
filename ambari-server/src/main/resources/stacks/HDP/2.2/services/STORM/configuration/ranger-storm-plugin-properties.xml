@@ -41,7 +41,14 @@
     <value>No</value>
     <display-name>Enable Ranger for STORM</display-name>
     <description>Enable ranger storm plugin ?</description>
+    <depends-on>
+      <property>
+        <type>ranger-env</type>
+        <name>ranger-storm-plugin-enabled</name>
+      </property>
+    </depends-on>
     <value-attributes>
+      <type>boolean</type>
       <overridable>false</overridable>
     </value-attributes>
   </property>
@@ -65,6 +72,9 @@
     <value>true</value>
     <display-name>Audit to DB</display-name>
     <description></description>
+    <value-attributes>
+      <type>boolean</type>
+    </value-attributes>
   </property> 
 
   <property>
@@ -72,6 +82,9 @@
     <value>false</value>
     <display-name>Audit to HDFS</display-name>
     <description></description>
+    <value-attributes>
+      <type>boolean</type>
+    </value-attributes>
   </property>
 
   <property>

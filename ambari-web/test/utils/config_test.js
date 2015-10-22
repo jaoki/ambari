@@ -223,21 +223,21 @@ describe('App.config', function () {
       },
       {
         config: {
-          displayType: 'advanced',
+          displayType: 'string',
           value: ' value'
         },
         e: ' value'
       },
       {
         config: {
-          displayType: 'advanced',
+          displayType: 'string',
           value: ' value'
         },
         e: ' value'
       },
       {
         config: {
-          displayType: 'advanced',
+          displayType: 'string',
           value: 'http://localhost ',
           name: 'javax.jdo.option.ConnectionURL'
         },
@@ -245,7 +245,7 @@ describe('App.config', function () {
       },
       {
         config: {
-          displayType: 'advanced',
+          displayType: 'string',
           value: 'http://localhost    ',
           name: 'oozie.service.JPAService.jdbc.url'
         },
@@ -260,7 +260,7 @@ describe('App.config', function () {
       },
       {
         config: {
-          displayType: 'masterHosts',
+          displayType: 'componentHosts',
           value: ['host1.com', 'host2.com']
         },
         e: ['host1.com', 'host2.com']
@@ -427,9 +427,6 @@ describe('App.config', function () {
           category: 'Users and Groups',
           isVisible: true,
           serviceName: 'MISC',
-          isOverridable: false,
-          isReconfigurable: false,
-          displayName: 'HDFS User',
           displayType: 'user',
           index: 30
         },
@@ -445,9 +442,6 @@ describe('App.config', function () {
           category: 'Users and Groups',
           isVisible: true,
           serviceName: 'MISC',
-          isOverridable: false,
-          isReconfigurable: false,
-          displayName: 'Knox Group',
           displayType: 'user',
           index: 0
         },
@@ -470,7 +464,6 @@ describe('App.config', function () {
           service_name: 'MISC'
         },
         output: {
-          displayName: 'Smoke Test User',
           serviceName: 'MISC',
           belongsToService: ['MISC'],
           index: 30
@@ -479,42 +472,11 @@ describe('App.config', function () {
       },
       {
         input: {
-          property_type: ['GROUP'],
-          property_name: 'user_group'
-        },
-        output: {
-          displayName: 'Hadoop Group'
-        },
-        title: 'user_group'
-      },
-      {
-        input: {
-          property_type: ['USER'],
-          property_name: 'mapred_user'
-        },
-        output: {
-          displayName: 'MapReduce User'
-        },
-        title: 'mapred_user'
-      },
-      {
-        input: {
-          property_type: ['USER'],
-          property_name: 'zk_user'
-        },
-        output: {
-          displayName: 'ZooKeeper User'
-        },
-        title: 'zk_user'
-      },
-      {
-        input: {
           property_type: ['USER'],
           property_name: 'ignore_groupsusers_create'
         },
         output: {
-          displayName: 'Skip group modifications during install',
-          displayType: 'checkbox'
+          displayType: 'boolean'
         },
         title: 'ignore_groupsusers_create'
       },
@@ -811,12 +773,17 @@ describe('App.config', function () {
     });
     it('returns singleLine displayType', function() {
       sinon.stub(App.config, 'isContentProperty', function () {return false});
-      expect(App.config.getDefaultDisplayType('n1','f1','v1')).to.equal('advanced');
+      expect(App.config.getDefaultDisplayType('n1','f1','v1')).to.equal('string');
       App.config.isContentProperty.restore();
     });
     it('returns multiLine displayType', function() {
       sinon.stub(App.config, 'isContentProperty', function () {return false});
       expect(App.config.getDefaultDisplayType('n2', 'f2', 'v1\nv2')).to.equal('multiLine');
+      App.config.isContentProperty.restore();
+    });
+    it('returns custom displayType for FALCON oozie-site properties', function() {
+      sinon.stub(App.config, 'isContentProperty', function () {return false});
+      expect(App.config.getDefaultDisplayType('n2', 'oozie-site.xml', 'v1\nv2', 'FALCON')).to.equal('custom');
       App.config.isContentProperty.restore();
     });
   });
@@ -885,8 +852,8 @@ describe('App.config', function () {
   });
 
   describe('#formatValue', function() {
-    it('formatValue for masterHosts', function () {
-      var serviceConfigProperty = Em.Object.create({'displayType': 'masterHosts', value: "['h1','h2']"});
+    it('formatValue for componentHosts', function () {
+      var serviceConfigProperty = Em.Object.create({'displayType': 'componentHosts', value: "['h1','h2']"});
       expect(App.config.formatPropertyValue(serviceConfigProperty)).to.eql(['h1','h2']);
     });
 
@@ -1034,7 +1001,7 @@ describe('App.config', function () {
       unit: null,
       hasInitialValue: false,
       isOverridable: true,
-      index: null,
+      index: Infinity,
       dependentConfigPattern: null,
       options: null,
       radioName: null,
@@ -1146,4 +1113,45 @@ describe('App.config', function () {
     });
   });
 
+  describe('#createHostNameProperty', function() {
+    it('create host property', function() {
+      expect(App.config.createHostNameProperty('service1', 'component1', ['host1'], Em.Object.create({
+        isMultipleAllowed: false,
+        displayName: 'display name'
+      }))).to.eql({
+          "name": 'component1_host',
+          "displayName": 'display name host',
+          "value": ['host1'],
+          "recommendedValue": ['host1'],
+          "description": "The host that has been assigned to run display name",
+          "displayType": "componentHost",
+          "isOverridable": false,
+          "isRequiredByAgent": false,
+          "serviceName": 'service1',
+          "filename": "service1-site.xml",
+          "category": 'component1',
+          "index": 0
+        })
+    });
+
+    it('create hosts property', function() {
+      expect(App.config.createHostNameProperty('service1', 'component1', ['host1'], Em.Object.create({
+        isMultipleAllowed: true,
+        displayName: 'display name'
+      }))).to.eql({
+          "name": 'component1_hosts',
+          "displayName": 'display name host',
+          "value": ['host1'],
+          "recommendedValue": ['host1'],
+          "description": "The hosts that has been assigned to run display name",
+          "displayType": "componentHosts",
+          "isOverridable": false,
+          "isRequiredByAgent": false,
+          "serviceName": 'service1',
+          "filename": "service1-site.xml",
+          "category": 'component1',
+          "index": 0
+        })
+    });
+  })
 });

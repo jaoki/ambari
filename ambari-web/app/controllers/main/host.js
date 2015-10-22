@@ -24,7 +24,6 @@ var hostsManagement = require('utils/hosts');
 App.MainHostController = Em.ArrayController.extend(App.TableServerMixin, {
   name: 'mainHostController',
 
-  dataSource: App.Host.find(),
   clearFilters: null,
 
   filteredCount: 0,
@@ -991,7 +990,7 @@ App.MainHostController = Em.ArrayController.extend(App.TableServerMixin, {
         secondary: false
       });
     } else {
-      App.router.get('applicationController').dataLoading().done(function (initValue) {
+      App.router.get('userSettingsController').dataLoading('show_bg').done(function (initValue) {
         if (initValue) {
           App.router.get('backgroundOperationsController').showPopup();
         }

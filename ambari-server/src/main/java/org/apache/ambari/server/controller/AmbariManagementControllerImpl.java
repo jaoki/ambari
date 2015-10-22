@@ -114,10 +114,12 @@ import org.apache.ambari.server.security.authorization.AuthorizationHelper;
 import org.apache.ambari.server.security.authorization.Group;
 import org.apache.ambari.server.security.authorization.User;
 import org.apache.ambari.server.security.authorization.Users;
+import org.apache.ambari.server.security.credential.PrincipalKeyCredential;
+import org.apache.ambari.server.security.encryption.CredentialStoreService;
+import org.apache.ambari.server.security.encryption.CredentialStoreType;
 import org.apache.ambari.server.security.ldap.AmbariLdapDataPopulator;
 import org.apache.ambari.server.security.ldap.LdapBatchDto;
 import org.apache.ambari.server.security.ldap.LdapSyncDto;
-import org.apache.ambari.server.serveraction.kerberos.KerberosCredential;
 import org.apache.ambari.server.serveraction.kerberos.KerberosInvalidConfigurationException;
 import org.apache.ambari.server.serveraction.kerberos.KerberosOperationException;
 import org.apache.ambari.server.stageplanner.RoleGraph;
@@ -249,6 +251,8 @@ public class AmbariManagementControllerImpl implements AmbariManagementControlle
   private WidgetLayoutDAO widgetLayoutDAO;
   @Inject
   private ClusterDAO clusterDAO;
+  @Inject
+  private CredentialStoreService credentialStoreService;
 
   private MaintenanceStateHelper maintenanceStateHelper;
 
@@ -922,6 +926,7 @@ public class AmbariManagementControllerImpl implements AmbariManagementControlle
       ClusterResponse cr = singleCluster.convertToResponse();
       cr.setDesiredConfigs(singleCluster.getDesiredConfigs());
       cr.setDesiredServiceConfigVersions(singleCluster.getActiveServiceConfigVersions());
+      cr.setCredentialStoreServiceProperties(getCredentialStoreServiceProperties());
       response.add(cr);
       return response;
     }
@@ -1261,9 +1266,9 @@ public class AmbariManagementControllerImpl implements AmbariManagementControlle
 
       Map<String, Object> sessionAttributes = request.getSessionAttributes();
 
-      // TODO: Create REST API entry point to securely set credentials in the CredentialProvider then
-      // TODO: remove this block to _clean_ the session attributes and store any KDC administrator
-      // TODO: credentials in the secure credential provider facility.
+      // TODO: Once the UI uses the Credential Resource API, remove this block to _clean_ the
+      // TODO: session attributes and store any KDC administrator credentials in the secure
+      // TODO: credential provider facility.
       // For now, to keep things backwards compatible, get and remove the KDC administrator credentials
       // from the session attributes and store them in the CredentialsProvider. The KDC administrator
       // credentials are prefixed with kdc_admin/. The following attributes are expected, if setting
@@ -1295,7 +1300,9 @@ public class AmbariManagementControllerImpl implements AmbariManagementControlle
 
         if(principal != null) {
           // The KDC admin principal exists... set the credentials in the credentials store
-          kerberosHelper.setKDCCredentials(new KerberosCredential(principal, password, null));
+          credentialStoreService.setCredential(cluster.getClusterName(),
+              KerberosHelper.KDC_ADMINISTRATOR_CREDENTIAL_ALIAS,
+              new PrincipalKeyCredential(principal, password), CredentialStoreType.TEMPORARY);
         }
 
         sessionAttributes = cleanedSessionAttributes;
@@ -3341,7 +3348,11 @@ public class AmbariManagementControllerImpl implements AmbariManagementControlle
         actionManager,
         actionRequest);
 
-    ExecuteCommandJson jsons = customCommandExecutionHelper.getCommandJson(actionExecContext, cluster);
+    StackId stackId = null;
+    if (null != cluster) {
+      stackId = cluster.getDesiredStackVersion();
+    }
+    ExecuteCommandJson jsons = customCommandExecutionHelper.getCommandJson(actionExecContext, cluster, stackId);
     String commandParamsForStage = jsons.getCommandParamsForStage();
 
     // Ensure that the specified requestContext (if any) is set as the request context
@@ -4377,5 +4388,20 @@ public class AmbariManagementControllerImpl implements AmbariManagementControlle
   @Override
   public TimelineMetricCacheProvider getTimelineMetricCacheProvider() {
     return injector.getInstance(TimelineMetricCacheProvider.class);
+  }
+
+  /**
+   * Queries the CredentialStoreService to gather properties about it.
+   * <p/>
+   * In particular, the details about which storage facilities are avaialble are returned via Boolean
+   * properties.
+   *
+   * @return a map of properties
+   */
+  public Map<String,String> getCredentialStoreServiceProperties() {
+    Map<String,String> properties = new HashMap<String, String>();
+    properties.put("storage.persistent", String.valueOf(credentialStoreService.isInitialized(CredentialStoreType.PERSISTED)));
+    properties.put("storage.temporary", String.valueOf(credentialStoreService.isInitialized(CredentialStoreType.TEMPORARY)));
+    return properties;
   }
 }
